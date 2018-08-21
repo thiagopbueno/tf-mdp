@@ -106,9 +106,9 @@ class DeepReactivePolicy(Policy):
     def _get_output_tensor(self, tensor, bounds):
         lower, upper = bounds
         if lower is not None:
-            lower = lower.tensor
+            lower = tf.stop_gradient(lower.tensor)
         if upper is not None:
-            upper = upper.tensor
+            upper = tf.stop_gradient(upper.tensor)
 
         if lower is not None and upper is not None:
             tensor = lower + (upper - lower) * tf.sigmoid(tensor)
