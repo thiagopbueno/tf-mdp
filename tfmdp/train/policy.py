@@ -41,11 +41,12 @@ class DeepReactivePolicy(Policy):
             state: Sequence[tf.Tensor],
             timestep: tf.Tensor) -> Sequence[tf.Tensor]:
         with self.graph.as_default():
-            self._state_inputs(state)
-            self._input_layer()
-            self._hidden_layers()
-            self._output_layer()
-            self._action_outputs(state)
+            with tf.variable_scope('policy'):
+                self._state_inputs(state)
+                self._input_layer()
+                self._hidden_layers()
+                self._output_layer()
+                self._action_outputs(state)
             action = self.action_outputs
             return action
 
@@ -55,7 +56,7 @@ class DeepReactivePolicy(Policy):
         self.state_inputs = tuple(map(reshape, state))
 
     def _input_layer(self, activation=tf.nn.relu):
-        with tf.variable_scope('layer0'):
+        with tf.variable_scope('input'):
             layers = []
             state_fluents = self._compiler.state_fluent_ordering
             for fluent_name, fluent_input in zip(state_fluents, self.state_inputs):

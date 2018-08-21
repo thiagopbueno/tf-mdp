@@ -78,13 +78,13 @@ class TestDeepReactivePolicy(unittest.TestCase):
                 size = np.prod(shape)
                 units = self.channels * size
 
-                kernel = 'layer0/{}/dense/kernel'.format(name)
-                vars = tf.global_variables(kernel)
+                kernel = 'policy/input/{}/dense/kernel'.format(name)
+                vars = tf.trainable_variables(kernel)
                 self.assertEqual(len(vars), 1)
                 self.assertListEqual(vars[0].shape.as_list(), [size, units])
 
-                bias = 'layer0/{}/dense/bias'.format(name)
-                vars = tf.global_variables(bias)
+                bias = 'policy/input/{}/dense/bias'.format(name)
+                vars = tf.trainable_variables(bias)
                 self.assertEqual(len(vars), 1)
                 self.assertListEqual(vars[0].shape.as_list(), [units,])
 
@@ -94,16 +94,16 @@ class TestDeepReactivePolicy(unittest.TestCase):
 
         with self.compiler.graph.as_default():
             for l, units in enumerate(self.layers):
-                vars = tf.global_variables('hidden{}'.format(l+1))
+                vars = tf.trainable_variables('policy/hidden{}'.format(l+1))
                 self.assertEqual(len(vars), 2)
 
-                kernel = 'hidden{}/dense/kernel'.format(l+1)
-                vars = tf.global_variables(kernel)
+                kernel = 'policy/hidden{}/dense/kernel'.format(l+1)
+                vars = tf.trainable_variables(kernel)
                 self.assertEqual(len(vars), 1)
                 self.assertEqual(vars[0].shape[1], units)
 
-                bias = 'hidden{}/dense/bias'.format(l+1)
-                vars = tf.global_variables(bias)
+                bias = 'policy/hidden{}/dense/bias'.format(l+1)
+                vars = tf.trainable_variables(bias)
                 self.assertEqual(len(vars), 1)
                 self.assertEqual(vars[0].shape[0], units)
 
@@ -123,15 +123,15 @@ class TestDeepReactivePolicy(unittest.TestCase):
                 self.assertEqual(layer.shape[1], np.prod(shape))
 
                 name = name.replace('/', '-')
-                vars = tf.global_variables('output/{}'.format(name))
+                vars = tf.trainable_variables('policy/output/{}'.format(name))
                 self.assertEqual(len(vars), 2)
 
-                kernel = 'output/{}/dense/kernel'.format(name)
-                vars = tf.global_variables(kernel)
+                kernel = 'policy/output/{}/dense/kernel'.format(name)
+                vars = tf.trainable_variables(kernel)
                 self.assertEqual(len(vars), 1)
 
-                bias = 'output/{}/dense/bias'.format(name)
-                vars = tf.global_variables(bias)
+                bias = 'policy/output/{}/dense/bias'.format(name)
+                vars = tf.trainable_variables(bias)
                 self.assertEqual(len(vars), 1)
 
     def test_action_outputs(self):
