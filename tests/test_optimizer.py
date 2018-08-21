@@ -127,7 +127,7 @@ class TestPolicyOptimizer(unittest.TestCase):
         train_op = self.optimizer._train_op
         self.assertEqual(train_op.name, 'policy_optimizer/RMSProp')
 
-    def test_run(self):
+    def test_optimization_run(self):
         losses, rewards = self.optimizer.run(self.epochs, show_progress=False)
         self.assertIsInstance(self.policy._checkpoint, str)
         self.assertIsInstance(losses, list)
