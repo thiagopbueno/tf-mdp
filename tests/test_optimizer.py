@@ -48,6 +48,10 @@ class TestPolicyOptimizer(unittest.TestCase):
         # compiler
         cls.compiler = Compiler(rddl, batch_mode=True)
         cls.initial_state = cls.compiler.compile_initial_state(cls.batch_size)
+        cls.state_fluents = cls.compiler.state_fluent_ordering
+        cls.state_size = cls.compiler.state_size
+        cls.action_fluents = cls.compiler.action_fluent_ordering
+        cls.action_size = cls.compiler.action_size
 
         # policy
         cls.channels = 4
@@ -58,23 +62,34 @@ class TestPolicyOptimizer(unittest.TestCase):
         cls.optimizer = PolicyOptimizer(cls.compiler, cls.policy)
         cls.optimizer.build(cls.learning_rate, cls.batch_size, cls.horizon)
 
+    def test_policy_variables(self):
+
+        with self.compiler.graph.as_default():
+
+            input_layer_variables = tf.trainable_variables('trajectory/policy/input/')
+            self.assertEqual(len(input_layer_variables), 2 * len(self.state_fluents))
+
+            hidden_layer_variables = tf.trainable_variables('trajectory/policy/hidden')
+            self.assertEqual(len(hidden_layer_variables), 2 * len(self.layers))
+
+            output_layer_variables = tf.trainable_variables('trajectory/policy/output/')
+            self.assertEqual(len(output_layer_variables), 2 * len(self.action_fluents))
+
     def test_state_trajectory(self):
         states = self.optimizer.states
-        state_size = self.compiler.state_size
         self.assertIsInstance(states, tuple, 'state trajectory is factored')
-        self.assertEqual(len(states), len(state_size), 'state trajectory has all states fluents')
-        for fluent, fluent_size in zip(states, state_size):
+        self.assertEqual(len(states), len(self.state_size), 'state trajectory has all states fluents')
+        for fluent, fluent_size in zip(states, self.state_size):
             tensor_size = [self.batch_size, self.horizon] + list(fluent_size)
             self.assertIsInstance(fluent, tf.Tensor, 'state fluent is a tensor')
             self.assertListEqual(fluent.shape.as_list(), tensor_size, 'fluent size is [batch_size, horizon, state_fluent_size]')
 
     def test_action_trajectory(self):
         actions = self.optimizer.actions
-        action_size = self.compiler.action_size
         self.assertIsInstance(actions, tuple, 'action trajectory is factored')
-        self.assertEqual(len(actions), len(action_size),
+        self.assertEqual(len(actions), len(self.action_size),
             'action trajectory has all actions fluents')
-        for fluent, fluent_size in zip(actions, action_size):
+        for fluent, fluent_size in zip(actions, self.action_size):
             tensor_size = [self.batch_size, self.horizon] + list(fluent_size)
             self.assertIsInstance(fluent, tf.Tensor, 'action fluent is a tensor')
             self.assertListEqual(fluent.shape.as_list(), tensor_size,
