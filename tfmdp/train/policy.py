@@ -61,7 +61,7 @@ class DeepReactivePolicy(Policy):
             state: Sequence[tf.Tensor],
             timestep: tf.Tensor) -> Sequence[tf.Tensor]:
         with self.graph.as_default():
-            with tf.variable_scope('policy'):
+            with tf.variable_scope('policy', reuse=tf.AUTO_REUSE):
                 self._state_inputs(state)
                 self._input_layer()
                 self._hidden_layers()
