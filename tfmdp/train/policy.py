@@ -30,12 +30,24 @@ class DeepReactivePolicy(Policy):
             channels: int,
             layers: Sequence[int]) -> None:
         self._compiler = compiler
+        self._saver = None
         self.channels = channels
         self.layers = layers
 
     @property
     def graph(self):
         return self._compiler.graph
+
+    @property
+    def name(self):
+        return 'drp-fc-channels={}-layers={}'.format(self.channels, ','.join(map(str, self.layers)))
+
+    def save(self, sess, save_path=None):
+        if self._saver is None:
+            self._saver = tf.train.Saver()
+        if save_path is None:
+            save_path = '/tmp/model-{}.ckpt'.format(self.name)
+        return self._saver.save(sess, save_path)
 
     def __call__(self,
             state: Sequence[tf.Tensor],

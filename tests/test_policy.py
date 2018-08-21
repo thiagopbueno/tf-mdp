@@ -52,6 +52,11 @@ class TestDeepReactivePolicy(unittest.TestCase):
         cls.policy = DeepReactivePolicy(cls.compiler, cls.channels, cls.layers)
         cls.action = cls.policy(cls.initial_state, cls.horizon)
 
+    def test_policy_name(self):
+        actual = self.policy.name
+        expected = 'drp-fc-channels={}-layers={}'.format(self.channels, ','.join(map(str, self.layers)))
+        self.assertEqual(actual, expected)
+
     def test_state_inputs(self):
         self.assertIsInstance(self.policy.state_inputs, tuple)
         self.assertEqual(len(self.policy.state_inputs), len(self.initial_state))
