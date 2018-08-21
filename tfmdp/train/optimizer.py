@@ -43,9 +43,15 @@ class PolicyOptimizer(object):
                 self._build_trajectory_graph(horizon, batch_size)
                 self._build_loss_graph()
                 self._build_optimization_graph(learning_rate)
+                self._build_summary_graph()
 
     def run(self, epochs: int, show_progress: bool = True) -> None:
+
         with tf.Session(graph=self.graph) as sess:
+
+            self._logdir = '/tmp/' + self._policy.name
+            self._train_writer = tf.summary.FileWriter(self._logdir + '/train', sess.graph)
+
             sess.run(tf.global_variables_initializer())
 
             reward = -sys.maxsize
@@ -60,6 +66,9 @@ class PolicyOptimizer(object):
                     rewards.append(reward_)
                     losses.append(loss_)
                     self._policy.save(sess)
+
+                summary_ = sess.run(self._merged)
+                self._train_writer.add_summary(summary_, step)
 
                 if show_progress:
                     print('Epoch {0:5}: loss = {1:3.6f}\r'.format(step, loss_), end='')
@@ -85,3 +94,9 @@ class PolicyOptimizer(object):
         '''Builds the training ops.'''
         self._optimizer = tf.train.RMSPropOptimizer(learning_rate)
         self._train_op = self._optimizer.minimize(self.loss)
+
+    def _build_summary_graph(self):
+        '''Builds the summary ops.'''
+        tf.summary.scalar('avg_total_reward', self.avg_total_reward)
+        tf.summary.scalar('loss', self.loss)
+        self._merged = tf.summary.merge_all()
