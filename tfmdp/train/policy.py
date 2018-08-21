@@ -40,13 +40,13 @@ class DeepReactivePolicy(Policy):
 
     @property
     def name(self):
-        return 'drp-fc-channels={}-layers={}'.format(self.channels, ','.join(map(str, self.layers)))
+        return 'drp-fc-channels={}-layers={}'.format(self.channels, '+'.join(map(str, self.layers)))
 
     def save(self, sess, save_path=None):
         if self._saver is None:
             self._saver = tf.train.Saver()
         if save_path is None:
-            save_path = '/tmp/model-{}.ckpt'.format(self.name)
+            save_path = '/tmp/{}/model.ckpt'.format(self.name)
         self._checkpoint = self._saver.save(sess, save_path)
         return self._checkpoint
 

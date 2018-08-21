@@ -54,7 +54,7 @@ class TestDeepReactivePolicy(unittest.TestCase):
 
     def test_policy_name(self):
         actual = self.policy.name
-        expected = 'drp-fc-channels={}-layers={}'.format(self.channels, ','.join(map(str, self.layers)))
+        expected = 'drp-fc-channels={}-layers={}'.format(self.channels, '+'.join(map(str, self.layers)))
         self.assertEqual(actual, expected)
 
     def test_state_inputs(self):
