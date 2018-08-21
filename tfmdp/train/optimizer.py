@@ -49,7 +49,6 @@ class PolicyOptimizer(object):
             sess.run(tf.global_variables_initializer())
 
             reward = -sys.maxsize
-            checkpoint = None
             losses = []
             rewards = []
 
@@ -60,12 +59,12 @@ class PolicyOptimizer(object):
                     reward = reward_
                     rewards.append(reward_)
                     losses.append(loss_)
-                    checkpoint = self._policy.save(sess)
+                    self._policy.save(sess)
 
                 if show_progress:
                     print('Epoch {0:5}: loss = {1:3.6f}\r'.format(step, loss_), end='')
 
-            return checkpoint, losses, rewards
+            return losses, rewards
 
     def _build_trajectory_graph(self, horizon: int, batch_size: int) -> None:
         '''Builds the (state, action, interm, reward) trajectory ops.'''

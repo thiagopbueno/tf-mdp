@@ -47,7 +47,15 @@ class DeepReactivePolicy(Policy):
             self._saver = tf.train.Saver()
         if save_path is None:
             save_path = '/tmp/model-{}.ckpt'.format(self.name)
-        return self._saver.save(sess, save_path)
+        self._checkpoint = self._saver.save(sess, save_path)
+        return self._checkpoint
+
+    def restore(self, sess, save_path=None):
+        if self._saver is None:
+            self._saver = tf.train.Saver()
+        if save_path is None:
+            save_path = self._checkpoint
+        self._saver.restore(sess, save_path)
 
     def __call__(self,
             state: Sequence[tf.Tensor],
