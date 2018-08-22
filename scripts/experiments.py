@@ -36,6 +36,12 @@ def parse_rddl(path):
     return rddl
 
 
+def parse_json(path):
+    import json
+    params = read_file(path)
+    return json.loads(params)
+
+
 def compile(rddl):
     rddl2tf = Compiler(rddl, batch_mode=True)
     return rddl2tf
@@ -44,7 +50,6 @@ def compile(rddl):
 def print_params(channels, layers, batch_size, learning_rate):
     print()
     print('>> Policy Net: channels = {}, layers = [{}]'.format(channels, ','.join(map(str, layers))))
-    print()
     print('>> Training: batch_size = {}, learning_rate = {}'.format(batch_size, learning_rate))
     print()
 
@@ -69,22 +74,18 @@ def make_run_name(channels, layers, batch_size, learning_rate):
 if __name__ == '__main__':
 
     rddl = parse_rddl(sys.argv[1])
-    epochs = sys.argv[2]
-    horizon = sys.argv[3]
+    params = parse_json(sys.argv[2])
+
+    horizon = params['horizon']
+    epochs = params['epochs']
+    hyperparameters = params['hyperparameters']
 
     domain = rddl.domain.name
     instance = rddl.instance.name
     logdir = make_logdir(domain, instance, 'horizon=' + str(horizon), 'epochs=' + str(epochs))
 
-    HYPERPARAMETERS = {
-        'channels': [1, 4, 16],
-        'layers': [[1024], [512, 256], [256, 128, 64], [128, 64, 32, 16]],
-        'batch_size': [256, 512, 1024, 2048],
-        'learning_rate': [0.001, 0.0001, 0.00001, 0.000001]
-    }
-
     params = ['channels', 'layers', 'batch_size', 'learning_rate']
-    values = [HYPERPARAMETERS[param] for param in params]
+    values = [hyperparameters[param] for param in params]
 
     for (c, l, b, lr) in itertools.product(*values):
 
