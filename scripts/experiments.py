@@ -43,13 +43,9 @@ def compile(rddl):
 
 def print_params(channels, layers, batch_size, learning_rate):
     print()
-    print('>> Policy Net:')
-    print('channels = {}'.format(channels))
-    print('layers   = [{}]'.format(','.join(map(str, layers))))
+    print('>> Policy Net: channels = {}, layers = [{}]'.format(channels, ','.join(map(str, layers))))
     print()
-    print('>> Training parameters:')
-    print('batch size    = {}'.format(batch_size))
-    print('learning rate = {}'.format(learning_rate))
+    print('>> Training: batch_size = {}, learning_rate = {}'.format(batch_size, learning_rate))
     print()
 
 
