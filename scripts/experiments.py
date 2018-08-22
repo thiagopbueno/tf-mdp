@@ -69,6 +69,8 @@ def make_run_name(channels, layers, batch_size, learning_rate):
 if __name__ == '__main__':
 
     rddl = parse_rddl(sys.argv[1])
+    epochs = sys.argv[2]
+    horizon = sys.argv[3]
 
     domain = rddl.domain.name
     instance = rddl.instance.name
