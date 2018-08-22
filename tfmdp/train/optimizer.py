@@ -28,9 +28,13 @@ from typing import List, Optional, Sequence
 
 class PolicyOptimizer(object):
 
-    def __init__(self, compiler: Compiler, policy: DeepReactivePolicy) -> None:
+    def __init__(self,
+            compiler: Compiler,
+            policy: DeepReactivePolicy,
+            logdir: Optional[str] = None) -> None:
         self._compiler = compiler
         self._policy = policy
+        self._logdir = logdir if logdir is not None else '/tmp'
 
     @property
     def graph(self) -> tf.Graph:
@@ -49,7 +53,6 @@ class PolicyOptimizer(object):
 
         with tf.Session(graph=self.graph) as sess:
 
-            self._logdir = '/tmp/' + self._policy.name
             self._train_writer = tf.summary.FileWriter(self._logdir + '/train', sess.graph)
 
             sess.run(tf.global_variables_initializer())

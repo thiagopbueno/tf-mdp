@@ -36,6 +36,11 @@ def parse_args():
         help='number of units in each hidden layer in policy network (default=4)'
     )
     parser.add_argument(
+        '-ld', '--logdir',
+        type=str, default='/tmp/tfmdp',
+        help='log directory for data summaries (default=/tmp/tfmdp)'
+    )
+    parser.add_argument(
         '-b', '--batch-size',
         type=int, default=1024,
         help='number of trajectories in a batch (default=1024)'
@@ -43,7 +48,7 @@ def parse_args():
     parser.add_argument(
         '-hr', '--horizon',
         type=int, default=40,
-        help='number of timesteps (default=30)'
+        help='number of timesteps (default=40)'
     )
     parser.add_argument(
         '-e', '--epochs',
@@ -76,6 +81,7 @@ def print_parameters(args):
         print('layers   = [{}]'.format(','.join(args.layers)))
         print()
         print('>> Training:')
+        print('logdir        = {}'.format(args.logdir))
         print('batch size    = {}'.format(args.batch_size))
         print('horizon       = {}'.format(args.horizon))
         print('epochs        = {}'.format(args.epochs))
@@ -104,7 +110,7 @@ def compile(rddl):
 
 def solve(args):
     from tfmdp.planner import PolicyOptimizationPlanner
-    planner = PolicyOptimizationPlanner(rddl2tf, args.channels, args.layers)
+    planner = PolicyOptimizationPlanner(rddl2tf, args.channels, args.layers, args.logdir)
     planner.build(args.learning_rate, args.batch_size, args.horizon)
     policy, logdir = planner.run(args.epochs)
     return policy, logdir
