@@ -18,17 +18,10 @@ from pyrddl.parser import RDDLParser
 from tfrddlsim.rddl2tf.compiler import Compiler
 from tfmdp.planner import PolicyOptimizationPlanner
 
-import datetime
 import itertools
+import os
 import sys
 import time
-
-
-PREFIX = 'results/{}'.format('{:%Y-%m-%d}'.format(datetime.datetime.today()))
-
-
-def make_logdir(channels, layers, batch_size, learning_rate):
-    return '/channels={}_layers={}_batch={}_lr={}'.format(channels, '+'.join(map(str, layers)), batch_size, learning_rate)
 
 
 def read_file(path):
@@ -60,9 +53,8 @@ def print_params(channels, layers, batch_size, learning_rate):
     print()
 
 
-def run(rddl, channels, layers, batch_size, learning_rate, horizon, epochs):
+def run(rddl, logdir, channels, layers, batch_size, learning_rate, horizon, epochs):
     rddl2tf = compile(rddl)
-    logdir = PREFIX + make_logdir(channels, layers, batch_size, learning_rate)
     planner = PolicyOptimizationPlanner(rddl2tf, channels, layers, logdir)
     planner.build(learning_rate, batch_size, horizon)
     _, logdir = planner.run(epochs)
@@ -70,12 +62,21 @@ def run(rddl, channels, layers, batch_size, learning_rate, horizon, epochs):
     print(logdir)
 
 
+def make_logdir(*args):
+    return 'results/' + '/'.join(args) + '/'
+
+
+def make_run_name(channels, layers, batch_size, learning_rate):
+    return 'channels={}_layers={}_batch={}_lr={}'.format(channels, '+'.join(map(str, layers)), batch_size, learning_rate)
+
+
 if __name__ == '__main__':
 
     rddl = parse_rddl(sys.argv[1])
 
-    epochs = 1000
-    horizon = 20
+    domain = rddl.domain.name
+    instance = rddl.instance.name
+    logdir = make_logdir(domain, instance, 'horizon=' + str(horizon), 'epochs=' + str(epochs))
 
     HYPERPARAMETERS = {
         'channels': [1, 4, 16],
@@ -88,14 +89,21 @@ if __name__ == '__main__':
     values = [HYPERPARAMETERS[param] for param in params]
 
     for (c, l, b, lr) in itertools.product(*values):
+
+        run_logdir = logdir + make_run_name(c, l, b, lr)
+        print(run_logdir)
+        if os.path.isdir(run_logdir):
+            print('>> logdir exists!')
+            continue
+
         print('>>>>>> Training ...')
         print_params(c, l, b, lr)
         start = time.time()
-        run(rddl, c, l, b, lr, horizon, epochs)
+        # run(rddl, logdir, c, l, b, lr, horizon, epochs)
         end = time.time()
         uptime = end - start
         print()
         print('<<<<<< Done in {:.6f} sec.'.format(uptime))
         print()
 
-    print('tensorboard --logdir {}'.format(PREFIX))
+    print('tensorboard --logdir {}'.format(logdir))
