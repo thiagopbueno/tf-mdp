@@ -19,8 +19,9 @@ from tfrddlsim.rddl2tf.compiler import Compiler
 
 import numpy as np
 import tensorflow as tf
+from tensorflow.contrib.layers import layer_norm
 
-from typing import Sequence
+from typing import Optional, Sequence
 
 
 class DeepReactivePolicy(Policy):
@@ -28,11 +29,13 @@ class DeepReactivePolicy(Policy):
     def __init__(self,
             compiler: Compiler,
             channels: int,
-            layers: Sequence[int]) -> None:
+            layers: Sequence[int],
+            layer_norm: Optional[bool] = True) -> None:
         self._compiler = compiler
         self._saver = None
         self.channels = channels
         self.layers = layers
+        self.layer_norm = layer_norm
 
     @property
     def graph(self):
@@ -75,7 +78,7 @@ class DeepReactivePolicy(Policy):
         reshape = lambda fluent: tf.reshape(fluent, [self._batch_size, -1])
         self.state_inputs = tuple(map(reshape, state))
 
-    def _input_layer(self, activation=tf.nn.relu):
+    def _input_layer(self, activation_fn=tf.nn.relu):
         with tf.variable_scope('input'):
             layers = []
             state_fluents = self._compiler.state_fluent_ordering
@@ -84,16 +87,38 @@ class DeepReactivePolicy(Policy):
                 with tf.variable_scope(fluent_name):
                     fluent_size = np.prod(fluent_input.shape.as_list())
                     units = self.channels * fluent_size / self._batch_size
-                    layer = tf.layers.dense(fluent_input, units, activation)
+                    if self.layer_norm:
+                        activation = tf.layers.dense(fluent_input, units)
+                        layer = layer_norm(activation, activation_fn=activation_fn)
+                    else:
+                        layer = tf.layers.dense(fluent_input, units, activation=activation_fn)
+                    # tf.contrib.layers.layer_norm(
+                    #     inputs,
+                    #     center=True,
+                    #     scale=True,
+                    #     activation_fn=None,
+                    #     reuse=None,
+                    #     variables_collections=None,
+                    #     outputs_collections=None,
+                    #     trainable=True,
+                    #     begin_norm_axis=1,
+                    #     begin_params_axis=-1,
+                    #     scope=None
+                    # )
                     layers.append(layer)
             self.input_layer = tf.concat(layers, axis=0)
 
-    def _hidden_layers(self, activation=tf.nn.relu):
+    def _hidden_layers(self, activation_fn=tf.nn.relu):
         self.hidden = []
         layer = self.input_layer
         for l, units in enumerate(self.layers):
             with tf.variable_scope('hidden{}'.format(l+1)):
-                layer = tf.layers.dense(layer, units, activation)
+                layer = tf.layers.dense(layer, units, activation=activation_fn)
+                # if self.layer_norm:
+                #     activation = tf.layers.dense(layer, units)
+                #     layer = layer_norm(activation, activation_fn=activation_fn)
+                # else:
+                #     layer = tf.layers.dense(layer, units, activation=activation_fn)
                 self.hidden.append(layer)
         self.hidden = tuple(self.hidden)
 

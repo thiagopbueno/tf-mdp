@@ -17,6 +17,7 @@
 
 
 import argparse
+import time
 
 
 def parse_args():
@@ -34,6 +35,11 @@ def parse_args():
         nargs='+',
         required=True,
         help='number of units in each hidden layer in policy network (default=4)'
+    )
+    parser.add_argument(
+        '-ln', '--layer-norm',
+        action='store_true',
+        help='layer normalization flag'
     )
     parser.add_argument(
         '-ld', '--logdir',
@@ -77,8 +83,9 @@ def print_parameters(args):
         print('>> RDDL: {}'.format(args.rddl))
         print()
         print('>> Policy Net:')
-        print('channels = {}'.format(args.channels))
-        print('layers   = [{}]'.format(','.join(args.layers)))
+        print('channels  = {}'.format(args.channels))
+        print('layers    = [{}]'.format(','.join(args.layers)))
+        print('layernorm = {}'.format(args.layer_norm))
         print()
         print('>> Training:')
         print('logdir        = {}'.format(args.logdir))
@@ -110,10 +117,12 @@ def compile(rddl):
 
 def solve(args):
     from tfmdp.planner import PolicyOptimizationPlanner
-    planner = PolicyOptimizationPlanner(rddl2tf, args.channels, args.layers, args.logdir)
+    planner = PolicyOptimizationPlanner(rddl2tf, args.channels, args.layers, args.layer_norm, args.logdir)
     planner.build(args.learning_rate, args.batch_size, args.horizon)
+    start = time.time()
     policy, logdir = planner.run(args.epochs)
-    return policy, logdir
+    end = time.time()
+    return policy, logdir, end - start
 
 
 if __name__ == '__main__':
@@ -131,7 +140,9 @@ if __name__ == '__main__':
     rddl2tf = compile(rddl)
 
     # run planner
-    policy, logdir = solve(args)
+    policy, logdir, uptime = solve(args)
+    print()
+    print('Done in {:.6f} sec.'.format(uptime))
 
     print()
     print('tensorboard --logdir {}'.format(logdir))

@@ -70,7 +70,7 @@ class TestPolicyOptimizer(unittest.TestCase):
         with self.compiler.graph.as_default():
 
             input_layer_variables = tf.trainable_variables('trajectory/policy/input/')
-            self.assertEqual(len(input_layer_variables), 2 * len(self.state_fluents))
+            self.assertEqual(len(input_layer_variables), 4 * len(self.state_fluents))
 
             hidden_layer_variables = tf.trainable_variables('trajectory/policy/hidden')
             self.assertEqual(len(hidden_layer_variables), 2 * len(self.layers))

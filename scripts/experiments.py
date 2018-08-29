@@ -47,16 +47,16 @@ def compile(rddl):
     return rddl2tf
 
 
-def print_params(channels, layers, batch_size, learning_rate):
+def print_params(channels, layers, batch_size, learning_rate, horizon, epochs):
     print()
     print('>> Policy Net: channels = {}, layers = [{}]'.format(channels, ','.join(map(str, layers))))
-    print('>> Training: batch_size = {}, learning_rate = {}'.format(batch_size, learning_rate))
+    print('>> Training: batch_size = {}, learning_rate = {}, horizon = {}, epochs = {}'.format(batch_size, learning_rate, horizon, epochs))
     print()
 
 
 def run(rddl, logdir, channels, layers, batch_size, learning_rate, horizon, epochs):
     rddl2tf = compile(rddl)
-    planner = PolicyOptimizationPlanner(rddl2tf, channels, layers, logdir)
+    planner = PolicyOptimizationPlanner(rddl2tf, channels, layers, logdir=logdir)
     planner.build(learning_rate, batch_size, horizon)
     _, logdir = planner.run(epochs)
     print()
@@ -86,23 +86,25 @@ if __name__ == '__main__':
 
     params = ['channels', 'layers', 'batch_size', 'learning_rate']
     values = [hyperparameters[param] for param in params]
+    values = list(itertools.product(*values))
 
-    for (c, l, b, lr) in itertools.product(*values):
+    for i, (c, l, b, lr) in enumerate(values):
 
+        print('>>>>>> Training ({}/{}) ...'.format(i+1, len(values)))
         run_logdir = logdir + make_run_name(c, l, b, lr)
-        print(run_logdir)
+        print_params(c, l, b, lr, horizon, epochs)
+        print('>> logdir =', run_logdir)
+
         if os.path.isdir(run_logdir):
-            print('>> logdir exists!')
             continue
 
-        print('>>>>>> Training ...')
-        print_params(c, l, b, lr)
         start = time.time()
-        # run(rddl, logdir, c, l, b, lr, horizon, epochs)
+        run(rddl, run_logdir, c, l, b, lr, horizon, epochs)
         end = time.time()
         uptime = end - start
         print()
         print('<<<<<< Done in {:.6f} sec.'.format(uptime))
         print()
 
+    print()
     print('tensorboard --logdir {}'.format(logdir))

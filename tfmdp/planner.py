@@ -20,9 +20,9 @@ from tfmdp.train.optimizer import PolicyOptimizer
 
 class PolicyOptimizationPlanner(object):
 
-    def __init__(self, compiler, channels, layers, logdir=None):
+    def __init__(self, compiler, channels, layers, layer_norm=True, logdir=None):
         self._compiler = compiler
-        self._policy = DeepReactivePolicy(self._compiler, channels, layers)
+        self._policy = DeepReactivePolicy(self._compiler, channels, layers, layer_norm)
         self._optimizer = PolicyOptimizer(self._compiler, self._policy, logdir)
 
     def build(self, learning_rate, batch_size, horizon):
