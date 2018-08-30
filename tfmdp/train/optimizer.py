@@ -90,8 +90,12 @@ class PolicyOptimizer(object):
     def _build_loss_graph(self) -> None:
         '''Builds the loss ops.'''
         self.total_reward = tf.squeeze(tf.reduce_sum(self.rewards, axis=1))
-        self.avg_total_reward = tf.reduce_mean(self.total_reward)
+        self.avg_total_reward, self.variance_total_reward = tf.nn.moments(self.total_reward, axes=[0])
+        self.stddev_total_reward = tf.sqrt(self.variance_total_reward)
+        self.max_total_reward = tf.reduce_max(self.total_reward)
+        self.min_total_reward = tf.reduce_min(self.total_reward)
         self.loss = -self.avg_total_reward
+
 
     def _build_optimization_graph(self, learning_rate: float) -> None:
         '''Builds the training ops.'''
@@ -100,6 +104,10 @@ class PolicyOptimizer(object):
 
     def _build_summary_graph(self):
         '''Builds the summary ops.'''
-        tf.summary.scalar('avg_total_reward', self.avg_total_reward)
         tf.summary.scalar('loss', self.loss)
+        tf.summary.scalar('avg_total_reward', self.avg_total_reward)
+        tf.summary.scalar('stddev_total_reward', self.stddev_total_reward)
+        tf.summary.scalar('max_total_reward', self.max_total_reward)
+        tf.summary.scalar('min_total_reward', self.min_total_reward)
+        tf.summary.histogram('total_reward', self.total_reward)
         self._merged = tf.summary.merge_all()
