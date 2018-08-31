@@ -27,8 +27,8 @@ def parse_args():
     parser.add_argument(
         '-l', '--layers',
         nargs='+',
-        required=True,
-        help='number of units in each hidden layer in policy network (default=4)'
+        default=[],
+        help='number of units in each hidden layer in policy network'
     )
     parser.add_argument(
         '-ln', '--layer-norm',

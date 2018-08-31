@@ -92,7 +92,7 @@ class TestDeepReactivePolicy(unittest.TestCase):
 
     def test_hidden_layers(self):
         self.assertIsInstance(self.policy.hidden, tuple)
-        self.assertEqual(len(self.policy.hidden), len(self.layers))
+        self.assertEqual(len(self.policy.hidden), len(self.layers) + 1)
 
         with self.compiler.graph.as_default():
             for l, units in enumerate(self.layers):

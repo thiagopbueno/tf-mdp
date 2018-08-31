@@ -106,8 +106,8 @@ class DeepReactivePolicy(Policy):
                     layers.append(layer)
             self.input_layer = tf.concat(layers, axis=0)
 
-    def _hidden_layers(self, activation_fn=tf.nn.relu):
-        self.hidden = []
+    def _hidden_layers(self, activation_fn=tf.nn.elu):
+        self.hidden = [self.input_layer]
         layer = self.input_layer
         for l, units in enumerate(self.layers):
             with tf.variable_scope('hidden{}'.format(l+1)):
