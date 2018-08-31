@@ -25,12 +25,6 @@ def parse_args():
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument('rddl', type=str, help='RDDL filepath')
     parser.add_argument(
-        '-c', '--channels',
-        type=int,
-        required=True,
-        help='number of channels in policy network'
-    )
-    parser.add_argument(
         '-l', '--layers',
         nargs='+',
         required=True,
@@ -83,7 +77,6 @@ def print_parameters(args):
         print('>> RDDL: {}'.format(args.rddl))
         print()
         print('>> Policy Net:')
-        print('channels  = {}'.format(args.channels))
         print('layers    = [{}]'.format(','.join(args.layers)))
         print('layernorm = {}'.format(args.layer_norm))
         print()
@@ -117,7 +110,7 @@ def compile(rddl):
 
 def solve(args):
     from tfmdp.planner import PolicyOptimizationPlanner
-    planner = PolicyOptimizationPlanner(rddl2tf, args.channels, args.layers, args.layer_norm, args.logdir)
+    planner = PolicyOptimizationPlanner(rddl2tf, args.layers, args.layer_norm, args.logdir)
     planner.build(args.learning_rate, args.batch_size, args.horizon)
     start = time.time()
     policy, logdir = planner.run(args.epochs)

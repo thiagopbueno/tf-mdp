@@ -47,14 +47,13 @@ class TestDeepReactivePolicy(unittest.TestCase):
         cls.initial_state = cls.compiler.compile_initial_state(cls.batch_size)
 
         # Deep Reactive Policy
-        cls.channels = 8
         cls.layers = [128, 64]
-        cls.policy = DeepReactivePolicy(cls.compiler, cls.channels, cls.layers)
+        cls.policy = DeepReactivePolicy(cls.compiler, cls.layers)
         cls.action = cls.policy(cls.initial_state, cls.horizon)
 
     def test_policy_name(self):
         actual = self.policy.name
-        expected = 'drp-fc-channels={}-layers={}'.format(self.channels, '+'.join(map(str, self.layers)))
+        expected = 'drp-fc-layers={}'.format('+'.join(map(str, self.layers)))
         self.assertEqual(actual, expected)
 
     def test_state_inputs(self):
@@ -72,7 +71,7 @@ class TestDeepReactivePolicy(unittest.TestCase):
 
         sizes = list(np.prod(fluent.shape.as_list()) / self.batch_size for fluent in self.initial_state)
         total_size = sum(sizes)
-        shape = [self.batch_size, self.channels * total_size]
+        shape = [self.batch_size, total_size]
         self.assertListEqual(self.policy.input_layer.shape.as_list(), shape)
 
         with self.compiler.graph.as_default():
@@ -80,8 +79,6 @@ class TestDeepReactivePolicy(unittest.TestCase):
             state_size = self.compiler.state_size
             for name, shape in zip(state_fluents, state_size):
                 name = name.replace('/', '-')
-                size = np.prod(shape)
-                units = self.channels * size
 
                 kernel = 'policy/input/{}/dense/kernel'.format(name)
                 vars = tf.trainable_variables(kernel)

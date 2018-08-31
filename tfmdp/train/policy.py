@@ -28,12 +28,10 @@ class DeepReactivePolicy(Policy):
 
     def __init__(self,
             compiler: Compiler,
-            channels: int,
             layers: Sequence[int],
             layer_norm: Optional[bool] = True) -> None:
         self._compiler = compiler
         self._saver = None
-        self.channels = channels
         self.layers = layers
         self.layer_norm = layer_norm
 
@@ -43,7 +41,7 @@ class DeepReactivePolicy(Policy):
 
     @property
     def name(self):
-        return 'drp-fc-channels={}-layers={}'.format(self.channels, '+'.join(map(str, self.layers)))
+        return 'drp-fc-layers={}'.format('+'.join(map(str, self.layers)))
 
     def save(self, sess, save_path=None):
         if self._saver is None:

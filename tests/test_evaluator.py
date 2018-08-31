@@ -53,9 +53,8 @@ class TestPolicyOptimizer(unittest.TestCase):
         cls.action_fluents = cls.compiler.action_fluent_ordering
 
         # policy
-        cls.channels = 4
         cls.layers = [64, 32, 16]
-        cls.policy = DeepReactivePolicy(cls.compiler, cls.channels, cls.layers)
+        cls.policy = DeepReactivePolicy(cls.compiler, cls.layers)
 
         # optimizer
         cls.optimizer = PolicyOptimizer(cls.compiler, cls.policy)
