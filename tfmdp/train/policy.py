@@ -96,7 +96,7 @@ class DeepReactivePolicy(Policy):
                 layer = tf.layers.dense(layer, units, activation=activation_fn)
                 # if self.layer_norm:
                 #     activation = tf.layers.dense(layer, units)
-                #     layer = layer_norm(activation, activation_fn=activation_fn)
+                #     layer = tf.contrib.layers.layer_norm(activation, activation_fn=activation_fn)
                 # else:
                 #     layer = tf.layers.dense(layer, units, activation=activation_fn)
                 self.hidden.append(layer)
