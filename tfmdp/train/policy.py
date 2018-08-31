@@ -19,7 +19,6 @@ from tfrddlsim.rddl2tf.compiler import Compiler
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.contrib.layers import layer_norm
 
 from typing import Optional, Sequence
 
@@ -76,34 +75,17 @@ class DeepReactivePolicy(Policy):
         reshape = lambda fluent: tf.reshape(fluent, [self._batch_size, -1])
         self.state_inputs = tuple(map(reshape, state))
 
-    def _input_layer(self, activation_fn=tf.nn.relu):
+    def _input_layer(self, activation_fn=tf.nn.elu):
         with tf.variable_scope('input'):
             layers = []
             state_fluents = self._compiler.state_fluent_ordering
             for fluent_name, fluent_input in zip(state_fluents, self.state_inputs):
-                fluent_name = fluent_name.replace('/', '-')
-                with tf.variable_scope(fluent_name):
-                    fluent_size = np.prod(fluent_input.shape.as_list())
-                    units = self.channels * fluent_size / self._batch_size
-                    if self.layer_norm:
-                        activation = tf.layers.dense(fluent_input, units)
-                        layer = layer_norm(activation, activation_fn=activation_fn)
-                    else:
-                        layer = tf.layers.dense(fluent_input, units, activation=activation_fn)
-                    # tf.contrib.layers.layer_norm(
-                    #     inputs,
-                    #     center=True,
-                    #     scale=True,
-                    #     activation_fn=None,
-                    #     reuse=None,
-                    #     variables_collections=None,
-                    #     outputs_collections=None,
-                    #     trainable=True,
-                    #     begin_norm_axis=1,
-                    #     begin_params_axis=-1,
-                    #     scope=None
-                    # )
-                    layers.append(layer)
+                layer = fluent_input
+                if self.layer_norm:
+                    fluent_name = fluent_name.replace('/', '-')
+                    with tf.variable_scope(fluent_name):
+                        layer = tf.contrib.layers.layer_norm(fluent_input)
+                layers.append(layer)
             self.input_layer = tf.concat(layers, axis=0)
 
     def _hidden_layers(self, activation_fn=tf.nn.elu):

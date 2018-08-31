@@ -80,15 +80,16 @@ class TestDeepReactivePolicy(unittest.TestCase):
             for name, shape in zip(state_fluents, state_size):
                 name = name.replace('/', '-')
 
-                kernel = 'policy/input/{}/dense/kernel'.format(name)
-                vars = tf.trainable_variables(kernel)
-                self.assertEqual(len(vars), 1)
-                self.assertListEqual(vars[0].shape.as_list(), [size, units])
+                # layer norm
+                beta = 'policy/input/{}/LayerNorm/beta'.format(name)
+                beta = tf.trainable_variables(beta)
+                self.assertEqual(len(beta), 1)
+                self.assertListEqual(beta[0].shape.as_list(), list(shape))
 
-                bias = 'policy/input/{}/dense/bias'.format(name)
-                vars = tf.trainable_variables(bias)
-                self.assertEqual(len(vars), 1)
-                self.assertListEqual(vars[0].shape.as_list(), [units,])
+                gamma = 'policy/input/{}/LayerNorm/gamma'.format(name)
+                gamma = tf.trainable_variables(gamma)
+                self.assertEqual(len(gamma), 1)
+                self.assertListEqual(gamma[0].shape.as_list(), list(shape))
 
     def test_hidden_layers(self):
         self.assertIsInstance(self.policy.hidden, tuple)
