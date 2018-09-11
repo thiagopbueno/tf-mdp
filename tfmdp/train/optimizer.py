@@ -53,7 +53,8 @@ class PolicyOptimizer(object):
 
         with tf.Session(graph=self.graph) as sess:
 
-            self._train_writer = tf.summary.FileWriter(self._logdir + '/train', sess.graph)
+            self._train_writer = tf.summary.FileWriter(self._logdir + '/train')
+            self._test_writer = tf.summary.FileWriter(self._logdir + '/test')
 
             sess.run(tf.global_variables_initializer())
 
@@ -64,17 +65,21 @@ class PolicyOptimizer(object):
             for step in range(epochs):
                 _, loss_, reward_ = sess.run([self._train_op, self.loss, self.avg_total_reward])
 
-                if reward_ > reward:
-                    reward = reward_
-                    rewards.append(reward_)
-                    losses.append(loss_)
-                    self._policy.save(sess)
-
                 summary_ = sess.run(self._merged)
                 self._train_writer.add_summary(summary_, step)
 
+                if reward_ > reward:
+                    reward = reward_
+                    rewards.append((step, reward_))
+                    losses.append((step, loss_))
+                    self._test_writer.add_summary(summary_, step)
+                    self._policy.save(sess)
+
                 if show_progress:
                     print('Epoch {0:5}: loss = {1:3.6f}\r'.format(step, loss_), end='')
+
+            print()
+            print('rewards =', rewards)
 
             return losses, rewards
 
