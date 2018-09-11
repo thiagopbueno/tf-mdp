@@ -24,7 +24,7 @@ setup(
     packages=find_packages(),
     scripts=['scripts/tfmdp'],
     install_requires=[
-        'pyrddl',
+        'rddlgym',
         'tfrddlsim',
         'tensorflow',
         'tensorflow-tensorboard',

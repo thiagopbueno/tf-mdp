@@ -14,8 +14,8 @@
 # along with tf-mdp. If not, see <http://www.gnu.org/licenses/>.
 
 
-from pyrddl.parser import RDDLParser
-from tfrddlsim.rddl2tf.compiler import Compiler
+import rddlgym
+
 from tfmdp.planner import PolicyOptimizationPlanner
 
 import itertools
@@ -29,22 +29,10 @@ def read_file(path):
         return f.read()
 
 
-def parse_rddl(path):
-    parser = RDDLParser()
-    parser.build()
-    rddl = parser.parse(read_file(path))
-    return rddl
-
-
 def parse_json(path):
     import json
     params = read_file(path)
     return json.loads(params)
-
-
-def compile(rddl):
-    rddl2tf = Compiler(rddl, batch_mode=True)
-    return rddl2tf
 
 
 def print_params(layers, batch_size, learning_rate, horizon, epochs):
@@ -54,9 +42,11 @@ def print_params(layers, batch_size, learning_rate, horizon, epochs):
     print()
 
 
-def run(rddl, logdir, channels, batch_size, learning_rate, horizon, epochs):
-    rddl2tf = compile(rddl)
-    planner = PolicyOptimizationPlanner(rddl2tf, channels, logdir=logdir)
+def run(model_id, logdir, layers, batch_size, learning_rate, horizon, epochs):
+    compiler = rddlgym.make(model_id, mode=rddlgym.SCG)
+    compiler.batch_mode_on()
+    layernorm = True
+    planner = PolicyOptimizationPlanner(compiler, layers, layernorm, logdir=logdir)
     planner.build(learning_rate, batch_size, horizon)
     _, logdir = planner.run(epochs)
     print()
@@ -73,15 +63,18 @@ def make_run_name(layers, batch_size, learning_rate):
 
 if __name__ == '__main__':
 
-    rddl = parse_rddl(sys.argv[1])
+    model_id = sys.argv[1]
     params = parse_json(sys.argv[2])
+    output = sys.argv[3]
+
+    rddl = rddlgym.make(model_id, mode=rddlgym.AST)
+    domain = rddl.domain.name
+    instance = rddl.instance.name
 
     horizon = params['horizon']
     epochs = params['epochs']
     hyperparameters = params['hyperparameters']
 
-    domain = rddl.domain.name
-    instance = rddl.instance.name
     logdir = make_logdir(domain, instance, 'horizon=' + str(horizon), 'epochs=' + str(epochs))
 
     params = ['layers', 'batch_size', 'learning_rate']

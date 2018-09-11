@@ -16,6 +16,8 @@
 # along with tf-mdp. If not, see <http://www.gnu.org/licenses/>.
 
 
+import rddlgym
+
 import argparse
 import time
 
@@ -23,7 +25,11 @@ import time
 def parse_args():
     description = 'Probabilistic planning in continuous state-action MDPs using TensorFlow.'
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument('rddl', type=str, help='RDDL filepath')
+    parser.add_argument(
+        'rddl',
+        type=str,
+        help='RDDL file or rddlgym domain id'
+    )
     parser.add_argument(
         '-l', '--layers',
         nargs='+',
@@ -89,29 +95,18 @@ def print_parameters(args):
         print()
 
 
-def read_file(path):
-    with open(path, 'r') as f:
-        return f.read()
+def load_model(args):
+    compiler = rddlgym.make(args.rddl, mode=rddlgym.SCG)
+    compiler.batch_mode_on()
+    return compiler
 
 
-def parse_rddl(path):
-    from pyrddl.parser import RDDLParser
-    parser = RDDLParser()
-    parser.build()
-    rddl = parser.parse(read_file(path))
-    return rddl
-
-
-def compile(rddl):
-    from tfrddlsim.rddl2tf.compiler import Compiler
-    rddl2tf = Compiler(rddl, batch_mode=True)
-    return rddl2tf
-
-
-def solve(args):
+def solve(compiler, args):
     from tfmdp.planner import PolicyOptimizationPlanner
-    planner = PolicyOptimizationPlanner(rddl2tf, args.layers, args.layer_norm, args.logdir)
+
+    planner = PolicyOptimizationPlanner(compiler, args.layers, args.layer_norm, args.logdir)
     planner.build(args.learning_rate, args.batch_size, args.horizon)
+
     start = time.time()
     policy, logdir = planner.run(args.epochs)
     end = time.time()
@@ -120,17 +115,13 @@ def solve(args):
 
 if __name__ == '__main__':
 
-    # parse CLI arguments
     args = parse_args()
-
-    # print planner parameters
     print_parameters(args)
 
-    # read RDDL file
-    rddl = parse_rddl(args.rddl)
+    compiler = load_model(args)
+    rewards, policy, logdir, uptime = solve(compiler, args)
 
-    # compile RDDL to TensorFlow
-    rddl2tf = compile(rddl)
+    test(compiler, policy, args)
 
     # run planner
     policy, logdir, uptime = solve(args)

@@ -15,7 +15,7 @@
 
 
 from tfrddlsim.policy import Policy
-from tfrddlsim.rddl2tf.compiler import Compiler
+from rddl2tf.compiler import Compiler
 
 import numpy as np
 import tensorflow as tf

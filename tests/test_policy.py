@@ -13,8 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with tf-mdp. If not, see <http://www.gnu.org/licenses/>.
 
-from pyrddl.parser import RDDLParser
-from tfrddlsim.rddl2tf.compiler import Compiler
+import rddlgym
 
 from tfmdp.train.policy import DeepReactivePolicy
 
@@ -33,17 +32,11 @@ class TestDeepReactivePolicy(unittest.TestCase):
         cls.batch_size = 64
         cls.horizon = 15
 
-        # RDDL
-        with open('rddl/Reservoir.rddl', mode='r') as file:
-            RESERVOIR = file.read()
+        # model
+        cls.compiler = rddlgym.make('Reservoir-8', mode=rddlgym.SCG)
+        cls.compiler.batch_mode_on()
 
-        # parser
-        parser = RDDLParser()
-        parser.build()
-        rddl = parser.parse(RESERVOIR)
-
-        # compiler
-        cls.compiler = Compiler(rddl, batch_mode=True)
+        # initial state
         cls.initial_state = cls.compiler.compile_initial_state(cls.batch_size)
 
         # Deep Reactive Policy
