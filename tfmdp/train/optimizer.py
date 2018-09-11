@@ -99,8 +99,8 @@ class PolicyOptimizer(object):
         self.stddev_total_reward = tf.sqrt(self.variance_total_reward)
         self.max_total_reward = tf.reduce_max(self.total_reward)
         self.min_total_reward = tf.reduce_min(self.total_reward)
-        self.loss = -self.avg_total_reward
-
+        # self.loss = -self.avg_total_reward
+        self.loss = tf.square(self.avg_total_reward)
 
     def _build_optimization_graph(self, learning_rate: float) -> None:
         '''Builds the training ops.'''
