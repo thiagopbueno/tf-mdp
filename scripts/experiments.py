@@ -22,6 +22,7 @@ import itertools
 import os
 import sys
 import time
+import json
 
 
 def read_file(path):
@@ -48,9 +49,23 @@ def run(model_id, logdir, layers, batch_size, learning_rate, horizon, epochs):
     layernorm = True
     planner = PolicyOptimizationPlanner(compiler, layers, layernorm, logdir=logdir)
     planner.build(learning_rate, batch_size, horizon)
-    _, logdir = planner.run(epochs)
-    print()
-    print(logdir)
+    rewards, policy, _ = planner.run(epochs)
+    return rewards, policy
+
+
+def log_performance(filename, results):
+    class MyEncoder(json.JSONEncoder):
+        def default(self, obj):
+            if isinstance(obj, np.integer):
+                return int(obj)
+            elif isinstance(obj, np.floating):
+                return float(obj)
+            elif isinstance(obj, np.ndarray):
+                return obj.tolist()
+            else:
+                return super(MyEncoder, self).default(obj)
+    with open(filename, 'w') as file:
+        file.write(json.dumps(results, cls=MyEncoder, indent=4))
 
 
 def make_logdir(*args):
@@ -66,6 +81,7 @@ if __name__ == '__main__':
     model_id = sys.argv[1]
     params = parse_json(sys.argv[2])
     output = sys.argv[3]
+    N = sys.argv[4]
 
     rddl = rddlgym.make(model_id, mode=rddlgym.AST)
     domain = rddl.domain.name
@@ -81,23 +97,49 @@ if __name__ == '__main__':
     values = [hyperparameters[param] for param in params]
     values = list(itertools.product(*values))
 
-    for i, (l, b, lr) in enumerate(values):
+    results = {}
+
+    for i, (layers, batch_size, learning_rate) in enumerate(values):
 
         print('>>>>>> Training ({}/{}) ...'.format(i+1, len(values)))
-        run_logdir = logdir + make_run_name(l, b, lr)
-        print_params(l, b, lr, horizon, epochs)
-        print('>> logdir =', run_logdir)
+        test_name = make_run_name(layers, batch_size, learning_rate)
+        test_logdir = logdir + test_name
+        print_params(layers, batch_size, learning_rate, horizon, epochs)
 
-        if os.path.isdir(run_logdir):
+        if os.path.isdir(test_logdir):
             continue
 
-        start = time.time()
-        run(rddl, run_logdir, l, b, lr, horizon, epochs)
-        end = time.time()
-        uptime = end - start
-        print()
-        print('<<<<<< Done in {:.6f} sec.'.format(uptime))
-        print()
+        rewards = []
+        trainings = []
+        uptimes = []
+        for j in range(N):
+            print('>>> Iteration ({}/{})'.format(j+1, N))
+
+            run_logdir = test_logdir + '/run{}'.format(j+1)
+            print('>> logdir =', run_logdir)
+
+            start = time.time()
+            training, policy = run(model_id, run_logdir, layers, batch_size, learning_rate, horizon, epochs)
+            end = time.time()
+            uptime = end - start
+            uptimes.append(uptime)
+
+            print()
+            print('<<<<<< Done in {:.6f} sec.'.format(uptime))
+            print()
+
+            trainings.append(training)
+            rewards.append(training[-1][1])
+
+        results[test_name] = {
+            'avg': np.mean(rewards),
+            'stddev': np.std(rewards),
+            'avg_time': np.mean(uptimes),
+            'stddev_time': np.std(uptimes),
+            'trainings': trainings
+        }
+
+    log_performance(output, results)
 
     print()
     print('tensorboard --logdir {}'.format(logdir))

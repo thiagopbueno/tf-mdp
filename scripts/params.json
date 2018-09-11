@@ -1,0 +1,9 @@
+{
+    "epochs": 100,
+    "horizon": 40,
+    "hyperparameters": {
+        "layers": [[2048], [256, 128, 64, 32]],
+        "batch_size": [256],
+        "learning_rate": [0.001]
+    }
+}
