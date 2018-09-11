@@ -42,6 +42,13 @@ class DeepReactivePolicy(Policy):
     def name(self):
         return 'drp-fc-layers={}'.format('+'.join(map(str, self.layers)))
 
+    @property
+    def size(self):
+        with self.graph.as_default():
+            policy_vars = tf.trainable_variables('policy')
+            params = sum(prod(v.shape.as_list()) for v in policy_vars)
+            return params
+
     def save(self, sess, save_path=None):
         if self._saver is None:
             self._saver = tf.train.Saver()
