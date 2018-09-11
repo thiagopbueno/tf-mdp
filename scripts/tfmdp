@@ -103,14 +103,16 @@ def load_model(args):
 
 def solve(compiler, args):
     from tfmdp.planner import PolicyOptimizationPlanner
-
     planner = PolicyOptimizationPlanner(compiler, args.layers, args.layer_norm, args.logdir)
     planner.build(args.learning_rate, args.batch_size, args.horizon)
+    rewards, policy, logdir = planner.run(args.epochs)
+    return rewards, policy, logdir
 
-    start = time.time()
-    policy, logdir = planner.run(args.epochs)
-    end = time.time()
-    return policy, logdir, end - start
+
+def report_performance(rewards, horizon):
+    reward = rewards[-1][1]
+    print('>> Performance:')
+    print('total reward = {:.4f}, reward per timestep = {:.4f}\n'.format(reward, reward / horizon))
 
 
 if __name__ == '__main__':
@@ -118,15 +120,23 @@ if __name__ == '__main__':
     args = parse_args()
     print_parameters(args)
 
+    print('>> Loading model ...')
+    start = time.time()
     compiler = load_model(args)
-    rewards, policy, logdir, uptime = solve(compiler, args)
+    end = time.time()
+    uptime = end - start
+    print('Done in {:.6f} sec.'.format(uptime))
+    print()
 
-    test(compiler, policy, args)
-
-    # run planner
-    policy, logdir, uptime = solve(args)
+    print('>> Optimizing...')
+    start = time.time()
+    rewards, policy, logdir = solve(compiler, args)
+    end = time.time()
+    uptime = end - start
     print()
     print('Done in {:.6f} sec.'.format(uptime))
-
     print()
-    print('tensorboard --logdir {}'.format(logdir))
+
+    report_performance(rewards, args.horizon)
+
+    print('tensorboard --logdir {}\n'.format(logdir))
