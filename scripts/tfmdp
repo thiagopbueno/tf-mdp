@@ -48,8 +48,8 @@ def parse_args():
     )
     parser.add_argument(
         '-b', '--batch-size',
-        type=int, default=1024,
-        help='number of trajectories in a batch (default=1024)'
+        type=int, default=256,
+        help='number of trajectories in a batch (default=256)'
     )
     parser.add_argument(
         '-hr', '--horizon',
@@ -58,8 +58,8 @@ def parse_args():
     )
     parser.add_argument(
         '-e', '--epochs',
-        type=int, default=500,
-        help='number of timesteps (default=500)'
+        type=int, default=200,
+        help='number of timesteps (default=200)'
     )
     parser.add_argument(
         '-lr', '--learning-rate',
@@ -80,18 +80,18 @@ def print_parameters(args):
         print()
         print('Running tf-mdp v{} ...'.format(tfmdp.__version__))
         print()
-        print('>> RDDL: {}'.format(args.rddl))
+        print('>> RDDL:   {}'.format(args.rddl))
+        print('>> logdir: {}'.format(args.logdir))
         print()
         print('>> Policy Net:')
         print('layers    = [{}]'.format(','.join(args.layers)))
         print('layernorm = {}'.format(args.layer_norm))
         print()
         print('>> Training:')
-        print('logdir        = {}'.format(args.logdir))
-        print('batch size    = {}'.format(args.batch_size))
-        print('horizon       = {}'.format(args.horizon))
         print('epochs        = {}'.format(args.epochs))
         print('learning rate = {}'.format(args.learning_rate))
+        print('batch size    = {}'.format(args.batch_size))
+        print('horizon       = {}'.format(args.horizon))
         print()
 
 
