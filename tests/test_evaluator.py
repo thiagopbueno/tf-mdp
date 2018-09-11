@@ -73,7 +73,7 @@ class TestPolicyOptimizer(unittest.TestCase):
     def test_evaluation_run(self):
         horizon = 45
         batch_size = 1024
-        trajectories = self.evaluator.run(horizon, batch_size)
+        trajectories, _, _ = self.evaluator.run(horizon, batch_size)
         self.assertIsInstance(trajectories, tuple)
         self.assertEqual(len(trajectories), 5)
 

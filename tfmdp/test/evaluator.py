@@ -19,6 +19,7 @@ from tfmdp.train.policy import DeepReactivePolicy
 from rddl2tf.compiler import Compiler
 from tfrddlsim.simulation.policy_simulator import PolicySimulator
 
+import time
 import numpy as np
 import tensorflow as tf
 
@@ -55,10 +56,17 @@ class PolicyEvaluator(object):
         Returns:
             Tuple[StateArray, StatesArray, ActionsArray, IntermsArray, np.array]: Simulation output tuple.
         '''
+        start = time.time()
         self._simulator = PolicySimulator(self._compiler, self._policy, batch_size)
         trajectories = self._simulator.trajectory(horizon)
+        end = time.time()
+        building_time = end - start
 
+        start = time.time()
         with tf.Session(graph=self.graph) as sess:
             self._policy.restore(sess)
             trajectories_ = sess.run(trajectories)
-            return trajectories_
+        end = time.time()
+        inference_time = end - start
+
+        return trajectories_, building_time, inference_time
