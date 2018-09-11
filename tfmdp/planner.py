@@ -29,6 +29,6 @@ class PolicyOptimizationPlanner(object):
         self._optimizer.build(learning_rate, batch_size, horizon)
 
     def run(self, epochs, show_progress=True):
-        self._optimizer.run(epochs, show_progress=show_progress)
+        losses, rewards = self._optimizer.run(epochs, show_progress=show_progress)
         logdir = self._optimizer._train_writer.get_logdir()
-        return self._policy, logdir
+        return rewards, self._policy, logdir
