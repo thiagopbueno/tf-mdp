@@ -82,7 +82,7 @@ if __name__ == '__main__':
     model_id = sys.argv[1]
     params = parse_json(sys.argv[2])
     output = sys.argv[3]
-    N = sys.argv[4]
+    N = int(sys.argv[4])
 
     rddl = rddlgym.make(model_id, mode=rddlgym.AST)
     domain = rddl.domain.name
