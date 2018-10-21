@@ -17,16 +17,40 @@
 from tfmdp.train.policy import DeepReactivePolicy
 from tfmdp.train.optimizer import PolicyOptimizer
 
+import tensorflow as tf
+
 
 class PolicyOptimizationPlanner(object):
 
-    def __init__(self, compiler, layers, activation, input_layer_norm, hidden_layer_norm, logdir=None):
+    _loss_fn ={
+        'linear': lambda r: tf.losses.absolute_difference(0, r),
+        'mse': lambda r: tf.losses.mean_squared_error(0, r),
+        'huber': lambda r: tf.losses.huber_loss(0, r)
+    }
+
+    _non_linearities = {
+        'none': None,
+        'sigmoid': tf.sigmoid,
+        'tanh': tf.tanh,
+        'relu': tf.nn.relu,
+        'relu6': tf.nn.relu6,
+        'crelu': tf.nn.crelu,
+        'elu': tf.nn.elu,
+        'selu': tf.nn.selu,
+        'softplus': tf.nn.softplus,
+        'softsign': tf.nn.softsign
+    }
+
+    def __init__(self,
+            compiler,
+            layers, activation, input_layer_norm, hidden_layer_norm,
+            logdir=None):
         self._compiler = compiler
-        self._policy = DeepReactivePolicy(self._compiler, layers, activation, input_layer_norm, hidden_layer_norm)
+        self._policy = DeepReactivePolicy(self._compiler, layers, self._non_linearities[activation], input_layer_norm, hidden_layer_norm)
         self._optimizer = PolicyOptimizer(self._compiler, self._policy, logdir)
 
-    def build(self, learning_rate, batch_size, horizon):
-        self._optimizer.build(learning_rate, batch_size, horizon)
+    def build(self, learning_rate, batch_size, horizon, loss='linear'):
+        self._optimizer.build(learning_rate, batch_size, horizon, self._loss_fn[loss])
 
     def run(self, epochs, show_progress=True):
         losses, rewards = self._optimizer.run(epochs, show_progress=show_progress)

@@ -48,11 +48,11 @@ class TestPolicyOptimizer(unittest.TestCase):
 
         # policy
         cls.layers = [64, 32, 16]
-        cls.policy = DeepReactivePolicy(cls.compiler, cls.layers, input_layer_norm=True)
+        cls.policy = DeepReactivePolicy(cls.compiler, cls.layers, tf.nn.elu, input_layer_norm=True)
 
         # optimizer
         cls.optimizer = PolicyOptimizer(cls.compiler, cls.policy)
-        cls.optimizer.build(cls.learning_rate, cls.batch_size, cls.horizon)
+        cls.optimizer.build(cls.learning_rate, cls.batch_size, cls.horizon, tf.negative)
 
     def test_policy_variables(self):
 

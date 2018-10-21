@@ -20,34 +20,21 @@ from rddl2tf.compiler import Compiler
 import numpy as np
 import tensorflow as tf
 
-from typing import Optional, Sequence
+from typing import Callable, Optional, Sequence
 
 
 class DeepReactivePolicy(Policy):
 
-    _non_linearities = {
-        'none': None,
-        'sigmoid': tf.sigmoid,
-        'tanh': tf.tanh,
-        'relu': tf.nn.relu,
-        'relu6': tf.nn.relu6,
-        'crelu': tf.nn.crelu,
-        'elu': tf.nn.elu,
-        'selu': tf.nn.selu,
-        'softplus': tf.nn.softplus,
-        'softsign': tf.nn.softsign
-    }
-
     def __init__(self,
             compiler: Compiler,
             layers: Sequence[int],
-            activation: Optional[str] = 'elu',
+            activation: Callable[[tf.Tensor], tf.Tensor],
             input_layer_norm: Optional[bool] = False,
             hidden_layer_norm: Optional[bool] = False) -> None:
         self._compiler = compiler
         self._saver = None
         self.layers = layers
-        self.activation_fn = self._non_linearities[activation]
+        self.activation_fn = activation
         self.input_layer_norm = input_layer_norm
         self.hidden_layer_norm = hidden_layer_norm
 

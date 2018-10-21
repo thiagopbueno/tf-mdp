@@ -23,7 +23,7 @@ import sys
 import numpy as np
 import tensorflow as tf
 
-from typing import List, Optional, Sequence
+from typing import Callable, List, Optional, Sequence
 
 
 class PolicyOptimizer(object):
@@ -41,11 +41,15 @@ class PolicyOptimizer(object):
         '''Returns the compiler's graph.'''
         return self._compiler.graph
 
-    def build(self, learning_rate: float, batch_size: int, horizon: int) -> None:
+    def build(self,
+            learning_rate: float,
+            batch_size: int,
+            horizon: int,
+            loss_op: Callable[[tf.Tensor], tf.Tensor]) -> None:
         with self.graph.as_default():
             with tf.name_scope('policy_optimizer'):
                 self._build_trajectory_graph(horizon, batch_size)
-                self._build_loss_graph()
+                self._build_loss_graph(loss_op)
                 self._build_optimization_graph(learning_rate)
                 self._build_summary_graph()
 
@@ -92,15 +96,14 @@ class PolicyOptimizer(object):
         self.actions = trajectories[2]
         self.rewards = trajectories[4]
 
-    def _build_loss_graph(self) -> None:
+    def _build_loss_graph(self, loss_op: Callable[[tf.Tensor], tf.Tensor]) -> None:
         '''Builds the loss ops.'''
         self.total_reward = tf.squeeze(tf.reduce_sum(self.rewards, axis=1))
         self.avg_total_reward, self.variance_total_reward = tf.nn.moments(self.total_reward, axes=[0])
         self.stddev_total_reward = tf.sqrt(self.variance_total_reward)
         self.max_total_reward = tf.reduce_max(self.total_reward)
         self.min_total_reward = tf.reduce_min(self.total_reward)
-        # self.loss = -self.avg_total_reward
-        self.loss = tf.square(self.avg_total_reward)
+        self.loss = loss_op(self.avg_total_reward)
 
     def _build_optimization_graph(self, learning_rate: float) -> None:
         '''Builds the training ops.'''
