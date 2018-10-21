@@ -62,9 +62,15 @@ class DeepReactivePolicy(Policy):
     @property
     def size(self):
         with self.graph.as_default():
-            policy_vars = tf.trainable_variables('policy')
-            params = sum(prod(v.shape.as_list()) for v in policy_vars)
+            policy_vars = tf.trainable_variables(r'.*\/policy')
+            params = sum(np.prod(v.shape.as_list()) for v in policy_vars)
             return params
+
+    @property
+    def vars(self):
+        with self.graph.as_default():
+            policy_vars = tf.trainable_variables(r'.*\/policy')
+            return policy_vars
 
     def save(self, sess, save_path=None):
         if self._saver is None:
