@@ -37,18 +37,18 @@ def parse_json(path):
     return json.loads(params)
 
 
-def print_params(layers, batch_size, learning_rate, horizon, epochs):
+def print_params(layers, activation, batch_size, learning_rate, horizon, epochs):
     print()
-    print('>> Policy Net: layers = [{}]'.format(','.join(map(str, layers))))
+    print('>> Policy Net: layers = [{}], activation = {}'.format(','.join(map(str, layers)), activation))
     print('>> Training: batch_size = {}, learning_rate = {}, horizon = {}, epochs = {}'.format(batch_size, learning_rate, horizon, epochs))
     print()
 
 
-def run(model_id, logdir, layers, batch_size, learning_rate, horizon, epochs):
+def run(model_id, logdir, layers, activation, batch_size, learning_rate, horizon, epochs):
     compiler = rddlgym.make(model_id, mode=rddlgym.SCG)
     compiler.batch_mode_on()
     layernorm = True
-    planner = PolicyOptimizationPlanner(compiler, layers, layernorm, logdir=logdir)
+    planner = PolicyOptimizationPlanner(compiler, layers, activation, layernorm, logdir=logdir)
     planner.build(learning_rate, batch_size, horizon)
     rewards, policy, _ = planner.run(epochs)
     return rewards, policy
@@ -73,8 +73,8 @@ def make_logdir(*args):
     return 'results/' + '/'.join(args) + '/'
 
 
-def make_run_name(layers, batch_size, learning_rate):
-    return 'layers={}_batch={}_lr={}'.format('+'.join(map(str, layers)), batch_size, learning_rate)
+def make_run_name(layers, activation, batch_size, learning_rate):
+    return 'layers={}_act={}_batch={}_lr={}'.format('+'.join(map(str, layers)), activation, batch_size, learning_rate)
 
 
 if __name__ == '__main__':
@@ -94,18 +94,18 @@ if __name__ == '__main__':
 
     logdir = make_logdir(domain, instance, 'horizon=' + str(horizon), 'epochs=' + str(epochs))
 
-    params = ['layers', 'batch_size', 'learning_rate']
+    params = ['layers', 'activation', 'batch_size', 'learning_rate']
     values = [hyperparameters[param] for param in params]
     values = list(itertools.product(*values))
 
     results = {}
 
-    for i, (layers, batch_size, learning_rate) in enumerate(values):
+    for i, (layers, activation, batch_size, learning_rate) in enumerate(values):
 
         print('>>>>>> Training ({}/{}) ...'.format(i+1, len(values)))
-        test_name = make_run_name(layers, batch_size, learning_rate)
+        test_name = make_run_name(layers, activation, batch_size, learning_rate)
         test_logdir = logdir + test_name
-        print_params(layers, batch_size, learning_rate, horizon, epochs)
+        print_params(layers, activation, batch_size, learning_rate, horizon, epochs)
 
         if os.path.isdir(test_logdir):
             continue
@@ -120,7 +120,7 @@ if __name__ == '__main__':
             print('>> logdir =', run_logdir)
 
             start = time.time()
-            training, policy = run(model_id, run_logdir, layers, batch_size, learning_rate, horizon, epochs)
+            training, policy = run(model_id, run_logdir, layers, activation, batch_size, learning_rate, horizon, epochs)
             end = time.time()
             uptime = end - start
             uptimes.append(uptime)

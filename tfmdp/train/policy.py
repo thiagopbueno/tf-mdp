@@ -25,13 +25,28 @@ from typing import Optional, Sequence
 
 class DeepReactivePolicy(Policy):
 
+    _non_linearities = {
+        'none': None,
+        'sigmoid': tf.sigmoid,
+        'tanh': tf.tanh,
+        'relu': tf.nn.relu,
+        'relu6': tf.nn.relu6,
+        'crelu': tf.nn.crelu,
+        'elu': tf.nn.elu,
+        'selu': tf.nn.selu,
+        'softplus': tf.nn.softplus,
+        'softsign': tf.nn.softsign
+    }
+
     def __init__(self,
             compiler: Compiler,
             layers: Sequence[int],
+            activation: Optional[str] = 'elu',
             layer_norm: Optional[bool] = True) -> None:
         self._compiler = compiler
         self._saver = None
         self.layers = layers
+        self.activation_fn = self._non_linearities[activation]
         self.layer_norm = layer_norm
 
     @property
@@ -82,7 +97,7 @@ class DeepReactivePolicy(Policy):
         reshape = lambda fluent: tf.reshape(fluent, [self._batch_size, -1])
         self.state_inputs = tuple(map(reshape, state))
 
-    def _input_layer(self, activation_fn=tf.nn.elu):
+    def _input_layer(self):
         with tf.variable_scope('input'):
             layers = []
             state_fluents = self._compiler.state_fluent_ordering
@@ -95,12 +110,12 @@ class DeepReactivePolicy(Policy):
                 layers.append(layer)
             self.input_layer = tf.concat(layers, axis=0)
 
-    def _hidden_layers(self, activation_fn=tf.nn.elu):
+    def _hidden_layers(self):
         self.hidden = [self.input_layer]
         layer = self.input_layer
         for l, units in enumerate(self.layers):
             with tf.variable_scope('hidden{}'.format(l+1)):
-                layer = tf.layers.dense(layer, units, activation=activation_fn)
+                layer = tf.layers.dense(layer, units, activation=self.activation_fn)
                 # if self.layer_norm:
                 #     activation = tf.layers.dense(layer, units)
                 #     layer = tf.contrib.layers.layer_norm(activation, activation_fn=activation_fn)

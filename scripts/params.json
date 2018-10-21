@@ -3,6 +3,7 @@
     "horizon": 40,
     "hyperparameters": {
         "layers": [[2048], [256, 128, 64, 32]],
+        "activation": ["none", "sigmoid", "tanh", "relu", "relu6", "crelu", "elu", "selu", "softplus", "softsign"],
         "batch_size": [256],
         "learning_rate": [0.001]
     }

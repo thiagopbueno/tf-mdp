@@ -37,14 +37,15 @@ def parse_args():
         help='number of units in each hidden layer in policy network'
     )
     parser.add_argument(
+        '-a', '--activation',
+        type=str, choices=['none', 'sigmoid', 'tanh', 'relu', 'relu6', 'crelu', 'elu', 'selu', 'softplus', 'softsign'],
+        default='elu',
+        help='activation function for hidden layers in policy network'
+    )
+    parser.add_argument(
         '-ln', '--layer-norm',
         action='store_true',
         help='layer normalization flag'
-    )
-    parser.add_argument(
-        '-ld', '--logdir',
-        type=str, default='/tmp/tfmdp',
-        help='log directory for data summaries (default=/tmp/tfmdp)'
     )
     parser.add_argument(
         '-b', '--batch-size',
@@ -67,6 +68,11 @@ def parse_args():
         help='optimizer learning rate (default=0.001)'
     )
     parser.add_argument(
+        '-ld', '--logdir',
+        type=str, default='/tmp/tfmdp',
+        help='log directory for data summaries (default=/tmp/tfmdp)'
+    )
+    parser.add_argument(
         '-v', '--verbose',
         action='store_true',
         help='verbosity mode'
@@ -84,8 +90,9 @@ def print_parameters(args):
         print('>> logdir: {}'.format(args.logdir))
         print()
         print('>> Policy Net:')
-        print('layers    = [{}]'.format(','.join(args.layers)))
-        print('layernorm = {}'.format(args.layer_norm))
+        print('layers     = [{}]'.format(','.join(args.layers)))
+        print('activation = {}'.format(args.activation))
+        print('layernorm  = {}'.format(args.layer_norm))
         print()
         print('>> Training:')
         print('epochs        = {}'.format(args.epochs))
@@ -103,7 +110,7 @@ def load_model(args):
 
 def solve(compiler, args):
     from tfmdp.planner import PolicyOptimizationPlanner
-    planner = PolicyOptimizationPlanner(compiler, args.layers, args.layer_norm, args.logdir)
+    planner = PolicyOptimizationPlanner(compiler, args.layers, args.activation, args.layer_norm, args.logdir)
     planner.build(args.learning_rate, args.batch_size, args.horizon)
     rewards, policy, logdir = planner.run(args.epochs)
     return rewards, policy, logdir
