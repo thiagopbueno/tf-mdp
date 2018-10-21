@@ -43,9 +43,14 @@ def parse_args():
         help='activation function for hidden layers in policy network'
     )
     parser.add_argument(
-        '-ln', '--layer-norm',
+        '-iln', '--input-layer-norm',
         action='store_true',
-        help='layer normalization flag'
+        help='input layer normalization flag'
+    )
+    parser.add_argument(
+        '-hln', '--hidden-layer-norm',
+        action='store_true',
+        help='hidden layer normalization flag'
     )
     parser.add_argument(
         '-b', '--batch-size',
@@ -90,9 +95,10 @@ def print_parameters(args):
         print('>> logdir: {}'.format(args.logdir))
         print()
         print('>> Policy Net:')
-        print('layers     = [{}]'.format(','.join(args.layers)))
+        print('layers = [{}]'.format(','.join(args.layers)))
         print('activation = {}'.format(args.activation))
-        print('layernorm  = {}'.format(args.layer_norm))
+        print('input  layer norm = {}'.format(args.input_layer_norm))
+        print('hidden layer norm = {}'.format(args.hidden_layer_norm))
         print()
         print('>> Training:')
         print('epochs        = {}'.format(args.epochs))
@@ -110,7 +116,7 @@ def load_model(args):
 
 def solve(compiler, args):
     from tfmdp.planner import PolicyOptimizationPlanner
-    planner = PolicyOptimizationPlanner(compiler, args.layers, args.activation, args.layer_norm, args.logdir)
+    planner = PolicyOptimizationPlanner(compiler, args.layers, args.activation, args.input_layer_norm, args.hidden_layer_norm, args.logdir)
     planner.build(args.learning_rate, args.batch_size, args.horizon)
     rewards, policy, logdir = planner.run(args.epochs)
     return rewards, policy, logdir

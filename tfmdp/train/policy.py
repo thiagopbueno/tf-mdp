@@ -42,12 +42,14 @@ class DeepReactivePolicy(Policy):
             compiler: Compiler,
             layers: Sequence[int],
             activation: Optional[str] = 'elu',
-            layer_norm: Optional[bool] = True) -> None:
+            input_layer_norm: Optional[bool] = False,
+            hidden_layer_norm: Optional[bool] = False) -> None:
         self._compiler = compiler
         self._saver = None
         self.layers = layers
         self.activation_fn = self._non_linearities[activation]
-        self.layer_norm = layer_norm
+        self.input_layer_norm = input_layer_norm
+        self.hidden_layer_norm = hidden_layer_norm
 
     @property
     def graph(self):
@@ -103,7 +105,7 @@ class DeepReactivePolicy(Policy):
             state_fluents = self._compiler.state_fluent_ordering
             for fluent_name, fluent_input in zip(state_fluents, self.state_inputs):
                 layer = fluent_input
-                if self.layer_norm:
+                if self.input_layer_norm:
                     fluent_name = fluent_name.replace('/', '-')
                     with tf.variable_scope(fluent_name):
                         layer = tf.contrib.layers.layer_norm(fluent_input)
@@ -115,12 +117,11 @@ class DeepReactivePolicy(Policy):
         layer = self.input_layer
         for l, units in enumerate(self.layers):
             with tf.variable_scope('hidden{}'.format(l+1)):
-                layer = tf.layers.dense(layer, units, activation=self.activation_fn)
-                # if self.layer_norm:
-                #     activation = tf.layers.dense(layer, units)
-                #     layer = tf.contrib.layers.layer_norm(activation, activation_fn=activation_fn)
-                # else:
-                #     layer = tf.layers.dense(layer, units, activation=activation_fn)
+                if self.hidden_layer_norm:
+                    activation = tf.layers.dense(layer, units)
+                    layer = tf.contrib.layers.layer_norm(activation, activation_fn=self.activation_fn)
+                else:
+                    layer = tf.layers.dense(layer, units, activation=self.activation_fn)
                 self.hidden.append(layer)
         self.hidden = tuple(self.hidden)
 

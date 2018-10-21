@@ -47,8 +47,9 @@ def print_params(layers, activation, batch_size, learning_rate, horizon, epochs)
 def run(model_id, logdir, layers, activation, batch_size, learning_rate, horizon, epochs):
     compiler = rddlgym.make(model_id, mode=rddlgym.SCG)
     compiler.batch_mode_on()
-    layernorm = True
-    planner = PolicyOptimizationPlanner(compiler, layers, activation, layernorm, logdir=logdir)
+    input_layer_norm = True
+    hidden_layer_norm = False
+    planner = PolicyOptimizationPlanner(compiler, layers, activation, input_layer_norm, hidden_layer_norm, logdir=logdir)
     planner.build(learning_rate, batch_size, horizon)
     rewards, policy, _ = planner.run(epochs)
     return rewards, policy

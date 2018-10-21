@@ -41,7 +41,7 @@ class TestDeepReactivePolicy(unittest.TestCase):
 
         # Deep Reactive Policy
         cls.layers = [128, 64]
-        cls.policy = DeepReactivePolicy(cls.compiler, cls.layers)
+        cls.policy = DeepReactivePolicy(cls.compiler, cls.layers, input_layer_norm=True)
         cls.action = cls.policy(cls.initial_state, cls.horizon)
 
     def test_policy_name(self):
