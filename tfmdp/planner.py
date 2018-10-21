@@ -41,16 +41,29 @@ class PolicyOptimizationPlanner(object):
         'softsign': tf.nn.softsign
     }
 
+    _optimizers = {
+        'Adadelta': tf.train.AdadeltaOptimizer,
+        'Adagrad': tf.train.AdagradOptimizer,
+        'Adam': tf.train.AdamOptimizer,
+        'GradientDescent': tf.train.GradientDescentOptimizer,
+        'ProximalGradientDescent': tf.train.ProximalGradientDescentOptimizer,
+        'ProximalAdagrad': tf.train.ProximalAdagradOptimizer,
+        'RMSProp': tf.train.RMSPropOptimizer
+    }
+
     def __init__(self,
             compiler,
             layers, activation, input_layer_norm, hidden_layer_norm,
             logdir=None):
         self._compiler = compiler
         self._policy = DeepReactivePolicy(self._compiler, layers, self._non_linearities[activation], input_layer_norm, hidden_layer_norm)
-        self._optimizer = PolicyOptimizer(self._compiler, self._policy, logdir)
+        self._logdir = logdir
 
-    def build(self, learning_rate, batch_size, horizon, loss='linear'):
-        self._optimizer.build(learning_rate, batch_size, horizon, self._loss_fn[loss])
+    def build(self, learning_rate, batch_size, horizon, optimizer='RMSProp', loss='linear'):
+        self._optimizer = PolicyOptimizer(self._compiler, self._policy, self._logdir)
+        self._optimizer.build(
+            learning_rate, batch_size, horizon,
+            self._optimizers[optimizer], self._loss_fn[loss])
 
     def run(self, epochs, show_progress=True):
         losses, rewards = self._optimizer.run(epochs, show_progress=show_progress)

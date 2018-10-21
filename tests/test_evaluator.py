@@ -51,7 +51,7 @@ class TestPolicyOptimizer(unittest.TestCase):
 
         # optimizer
         cls.optimizer = PolicyOptimizer(cls.compiler, cls.policy)
-        cls.optimizer.build(cls.learning_rate, cls.batch_size, cls.horizon, tf.negative)
+        cls.optimizer.build(cls.learning_rate, cls.batch_size, cls.horizon, tf.train.RMSPropOptimizer, tf.negative)
         cls.optimizer.run(cls.epochs, show_progress=False)
 
         # evaluator

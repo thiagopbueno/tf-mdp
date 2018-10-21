@@ -73,6 +73,12 @@ def parse_args():
         help='optimizer learning rate (default=0.001)'
     )
     parser.add_argument(
+        '-opt', '--optimizer',
+        type=str, choices=['Adadelta', 'Adagrad', 'Adam', 'GradientDescent', 'ProximalGradientDescent', 'ProximalAdagrad', 'RMSProp'],
+        default='RMSProp',
+        help='loss optimizer (default=RMSProp)'
+    )
+    parser.add_argument(
         '-lfn', '--loss-fn',
         type=str, choices=['linear', 'mse', 'huber'],
         default='linear',
@@ -111,7 +117,8 @@ def print_parameters(args):
         print('learning rate = {}'.format(args.learning_rate))
         print('batch size    = {}'.format(args.batch_size))
         print('horizon       = {}'.format(args.horizon))
-        print('loss fn       = {}'.format(args.loss_fn))
+        print('optimizer     = {}'.format(args.optimizer))
+        print('loss function = {}'.format(args.loss_fn))
         print()
 
 
@@ -124,7 +131,7 @@ def load_model(args):
 def solve(compiler, args):
     from tfmdp.planner import PolicyOptimizationPlanner
     planner = PolicyOptimizationPlanner(compiler, args.layers, args.activation, args.input_layer_norm, args.hidden_layer_norm, args.logdir)
-    planner.build(args.learning_rate, args.batch_size, args.horizon, args.loss_fn)
+    planner.build(args.learning_rate, args.batch_size, args.horizon, args.optimizer, args.loss_fn)
     rewards, policy, logdir = planner.run(args.epochs)
     return rewards, policy, logdir
 

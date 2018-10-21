@@ -45,12 +45,13 @@ class PolicyOptimizer(object):
             learning_rate: float,
             batch_size: int,
             horizon: int,
+            optimizer: tf.train.Optimizer,
             loss_op: Callable[[tf.Tensor], tf.Tensor]) -> None:
         with self.graph.as_default():
             with tf.name_scope('policy_optimizer'):
                 self._build_trajectory_graph(horizon, batch_size)
                 self._build_loss_graph(loss_op)
-                self._build_optimization_graph(learning_rate)
+                self._build_optimization_graph(optimizer, learning_rate)
                 self._build_summary_graph()
 
     def run(self, epochs: int, show_progress: bool = True) -> None:
@@ -105,9 +106,9 @@ class PolicyOptimizer(object):
         self.min_total_reward = tf.reduce_min(self.total_reward)
         self.loss = loss_op(self.avg_total_reward)
 
-    def _build_optimization_graph(self, learning_rate: float) -> None:
+    def _build_optimization_graph(self, optimizer, learning_rate: float) -> None:
         '''Builds the training ops.'''
-        self._optimizer = tf.train.RMSPropOptimizer(learning_rate)
+        self._optimizer = optimizer(learning_rate)
         self._train_op = self._optimizer.minimize(self.loss)
 
     def _build_summary_graph(self):
