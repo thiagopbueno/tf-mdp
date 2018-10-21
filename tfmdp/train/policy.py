@@ -139,8 +139,10 @@ class DeepReactivePolicy(Policy):
     def _get_output_tensor(self, tensor, bounds):
         lower, upper = bounds
         if lower is not None:
+            lower = lower.cast(tf.float32)
             lower = tf.stop_gradient(lower.tensor)
         if upper is not None:
+            upper = upper.cast(tf.float32)
             upper = tf.stop_gradient(upper.tensor)
 
         if lower is not None and upper is not None:
