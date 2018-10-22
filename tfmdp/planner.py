@@ -56,16 +56,38 @@ class PolicyOptimizationPlanner(object):
             layers, activation, input_layer_norm, hidden_layer_norm,
             logdir=None):
         self._compiler = compiler
-        self._policy = DeepReactivePolicy(self._compiler, layers, self._non_linearities[activation], input_layer_norm, hidden_layer_norm)
         self._logdir = logdir
 
-    def build(self, learning_rate, batch_size, horizon, optimizer='RMSProp', loss='linear'):
+        self._policy = DeepReactivePolicy(
+            self._compiler,
+            layers, self._non_linearities[activation],
+            input_layer_norm, hidden_layer_norm)
+
+    def build(self,
+            learning_rate, batch_size, horizon,
+            optimizer='RMSProp',
+            loss='linear',
+            kernel_l1_regularizer=None, kernel_l2_regularizer=None,
+            bias_l1_regularizer=None, bias_l2_regularizer=None):
+
         self._optimizer = PolicyOptimizer(self._compiler, self._policy, self._logdir)
         self._optimizer.build(
             learning_rate, batch_size, horizon,
-            self._optimizers[optimizer], self._loss_fn[loss])
+            self._optimizers[optimizer],
+            self._loss_fn[loss],
+            self._get_regularizer(kernel_l1_regularizer, kernel_l2_regularizer),
+            self._get_regularizer(bias_l1_regularizer, bias_l2_regularizer))
 
     def run(self, epochs, show_progress=True):
         losses, rewards = self._optimizer.run(epochs, show_progress=show_progress)
         logdir = self._optimizer._train_writer.get_logdir()
         return rewards, self._policy, logdir
+
+    def _get_regularizer(self, l1_regularizer, l2_regularizer):
+        regularizer = []
+        if l1_regularizer != 0.0:
+            regularizer.append(tf.contrib.layers.l1_regularizer(l1_regularizer))
+        if l2_regularizer != 0.0:
+            regularizer.append(tf.contrib.layers.l2_regularizer(l2_regularizer))
+        if regularizer:
+            return tf.contrib.layers.sum_regularizer(regularizer)

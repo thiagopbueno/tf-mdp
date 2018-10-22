@@ -47,11 +47,14 @@ class PolicyOptimizer(object):
             batch_size: int,
             horizon: int,
             optimizer: tf.train.Optimizer,
-            loss_op: Callable[[tf.Tensor], tf.Tensor]) -> None:
+            loss_op: Callable[[tf.Tensor], tf.Tensor],
+            kernel_regularizer: Optional[Callable[[tf.Tensor], tf.Tensor]] = None,
+            bias_regularizer: Optional[Callable[[tf.Tensor], tf.Tensor]] = None) -> None:
         with self.graph.as_default():
             with tf.name_scope('policy_optimizer'):
                 self._build_trajectory_graph(horizon, batch_size)
                 self._build_loss_graph(loss_op)
+                self._build_regularization_loss_graph(kernel_regularizer, bias_regularizer)
                 self._build_optimization_graph(optimizer, learning_rate)
                 self._build_summary_graph()
 
@@ -106,6 +109,20 @@ class PolicyOptimizer(object):
         self.max_total_reward = tf.reduce_max(self.total_reward)
         self.min_total_reward = tf.reduce_min(self.total_reward)
         self.loss = loss_op(self.avg_total_reward)
+
+    def _build_regularization_loss_graph(self,
+            kernel_regularizer: Optional[Callable[[tf.Tensor], tf.Tensor]] = None,
+            bias_regularizer: Optional[Callable[[tf.Tensor], tf.Tensor]] = None) -> None:
+
+        if kernel_regularizer is not None:
+            kernels = tf.trainable_variables(r'.*/kernel:0$')
+            for kernel in kernels:
+                self.loss += kernel_regularizer(kernel)
+
+        if bias_regularizer is not None:
+            biases = tf.trainable_variables(r'.*/bias:0$')
+            for bias in biases:
+                self.loss += bias_regularizer(bias)
 
     def _build_optimization_graph(self, optimizer, learning_rate: float) -> None:
         '''Builds the training ops.'''
