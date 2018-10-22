@@ -19,6 +19,7 @@ from tfmdp.train.policy import DeepReactivePolicy
 from rddl2tf.compiler import Compiler
 from tfrddlsim.simulation.policy_simulator import PolicySimulator
 
+import re
 import sys
 import numpy as np
 import tensorflow as tf
@@ -109,14 +110,56 @@ class PolicyOptimizer(object):
     def _build_optimization_graph(self, optimizer, learning_rate: float) -> None:
         '''Builds the training ops.'''
         self._optimizer = optimizer(learning_rate)
-        self._train_op = self._optimizer.minimize(self.loss)
+        self._grad_and_vars = self._optimizer.compute_gradients(self.loss)
+        self._train_op = self._optimizer.apply_gradients(self._grad_and_vars)
 
     def _build_summary_graph(self):
         '''Builds the summary ops.'''
         tf.summary.scalar('loss', self.loss)
+
+        tf.summary.histogram('total_reward', self.total_reward)
         tf.summary.scalar('avg_total_reward', self.avg_total_reward)
         tf.summary.scalar('stddev_total_reward', self.stddev_total_reward)
         tf.summary.scalar('max_total_reward', self.max_total_reward)
         tf.summary.scalar('min_total_reward', self.min_total_reward)
-        tf.summary.histogram('total_reward', self.total_reward)
+
+        for grad, var in self._grad_and_vars:
+            grad_name = self._get_summary_name(grad.name)
+            tf.summary.scalar(grad_name + '/grad_norm', tf.norm(grad))
+            tf.summary.histogram(grad_name + '/grad', grad)
+
+            var_name = self._get_summary_name(var.name)
+            tf.summary.scalar(var_name + '/norm', tf.norm(var))
+            tf.summary.histogram(var_name, var)
+
         self._merged = tf.summary.merge_all()
+
+    def _get_summary_name(self, name):
+        m1 = re.search(r'/([^/]+)/([^/]+)/LayerNorm/batchnorm/sub/', name)
+        m2 = re.search(r'/([^/]+)/([^/]+)/LayerNorm/beta', name)
+        if m1 or m2:
+            m = m1 if m1 else m2
+            return '{}/{}/LayerNorm/beta'.format(m.group(1), m.group(2))
+
+        m1 = re.search(r'/([^/]+)/([^/]+)/LayerNorm/batchnorm/mul/', name)
+        m2 = re.search(r'/([^/]+)/([^/]+)/LayerNorm/gamma', name)
+        if m1 or m2:
+            m = m1 if m1 else m2
+            return '{}/{}/LayerNorm/gamma'.format(m.group(1), m.group(2))
+
+        summary_name = ''
+
+        m = re.search(r'hidden(\d+)', name)
+        if m:
+            summary_name += 'hidden{}'.format(m.group(1))
+        else:
+            m = re.search(r'output/([^/]+)/dense/', name)
+            if m:
+                summary_name += 'output/{}'.format(m.group(1))
+
+        if re.search(r'(MatMul)|(kernel)', name):
+            summary_name += '/kernel'
+        elif re.search(r'(BiasAdd)|(bias)', name):
+            summary_name += '/bias'
+
+        return summary_name
