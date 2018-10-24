@@ -18,6 +18,7 @@ from rddl2tf.compiler import Compiler
 from rddl2tf.fluent import TensorFluent
 from tfmdp.train.policy import DeepReactivePolicy
 
+from collections import namedtuple
 from enum import Enum
 import tensorflow as tf
 
@@ -34,6 +35,7 @@ IntermsTensor = Sequence[tf.Tensor]
 
 CellOutput = Tuple[StatesTensor, ActionsTensor, IntermsTensor, tf.Tensor]
 CellState = Sequence[tf.Tensor]
+
 
 class MRMCell(tf.nn.rnn_cell.RNNCell):
 
@@ -144,6 +146,9 @@ class ReparameterizationType(Enum):
     PARTIALLY_REPARAMETERIZED = 2
 
 
+Trajectory = namedtuple('Trajectory', 'initial_state states actions interms rewards log_probs')
+
+
 class MarkovRecurrentModel():
 
     def __init__(self, compiler: Compiler, policy: DeepReactivePolicy, batch_size: int) -> None:
@@ -158,6 +163,11 @@ class MarkovRecurrentModel():
     def batch_size(self) -> int:
         '''Returns the size of the simulation batch.'''
         return self._cell._batch_size
+
+    @property
+    def output_size(self) -> Tuple[Sequence[Shape], Sequence[Shape], Sequence[Shape], int, int]:
+        '''Returns the simulation output size.'''
+        return self._cell.output_size
 
     def timesteps(self, horizon: int) -> tf.Tensor:
         '''Returns the input tensor for the given `horizon`.'''
@@ -179,3 +189,25 @@ class MarkovRecurrentModel():
         steps = self.timesteps(horizon)
         flags = self.stop_flags(horizon, reparam_type)
         return tf.concat([steps, flags], axis=2, name='inputs')
+
+    def trajectory(self, horizon: int, reparam_type: ReparameterizationType) -> Trajectory:
+
+        with self.graph.as_default():
+
+            initial_state = self._cell.initial_state()
+            inputs = self.inputs(horizon, reparam_type)
+
+            outputs, final_state = tf.nn.dynamic_rnn(
+                self._cell,
+                inputs,
+                initial_state=initial_state,
+                dtype=tf.float32,
+                scope="trajectory")
+
+            outputs = [self._output(fluents) for fluents in outputs[:3]] + list(outputs[3:])
+
+        return Trajectory(initial_state, *outputs)
+
+    @classmethod
+    def _output(cls, fluents):
+        return tuple(f[0] for f in fluents)

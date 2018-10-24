@@ -283,3 +283,54 @@ class TestMarkovRecurrentModel(unittest.TestCase):
 
                     self.assertTrue(np.all(inputs1[:,:,1] == np.zeros((batch_size, horizon))))
                     self.assertTrue(np.all(inputs2[:,:,1] == np.ones((batch_size, horizon))))
+
+    def test_trajectory_fully_reparameterized(self):
+        self._test_trajectory(ReparameterizationType.FULLY_REPARAMETERIZED)
+
+    def test_trajectory_not_reparameterized(self):
+        self._test_trajectory(ReparameterizationType.NOT_REPARAMETERIZED)
+
+    def _test_trajectory(self, reparam_type):
+        horizon = 40
+        compilers = [self.compiler1]
+        simulators = [self.mrm1]
+        batch_sizes = [self.batch_size1]
+
+        for compiler, mrm, batch_size in zip(compilers, simulators, batch_sizes):
+
+            trajectory = mrm.trajectory(horizon, reparam_type)
+
+            self.assertIsInstance(trajectory, tuple)
+            self.assertEqual(len(trajectory), 6)
+
+            # sizes
+            state_size, action_size, interm_size, reward_size, log_prob_size = mrm.output_size
+
+            # states
+            self.assertIsInstance(trajectory.states, tuple)
+            self.assertEqual(len(trajectory[1]), len(state_size))
+            for s, sz in zip(trajectory[1], state_size):
+                self.assertIsInstance(s, tf.Tensor)
+                self.assertListEqual(s.shape.as_list(), [batch_size, horizon] + list(sz), '{}'.format(s))
+
+            # interms
+            self.assertIsInstance(trajectory.interms, tuple)
+            self.assertEqual(len(trajectory.interms), len(interm_size))
+            for s, sz in zip(trajectory.interms, interm_size):
+                self.assertIsInstance(s, tf.Tensor)
+                self.assertListEqual(s.shape.as_list(), [batch_size, horizon] + list(sz), '{}'.format(s))
+
+            # actions
+            self.assertIsInstance(trajectory.actions, tuple)
+            self.assertEqual(len(trajectory.actions), len(action_size))
+            for a, sz in zip(trajectory.actions, action_size):
+                self.assertIsInstance(a, tf.Tensor)
+                self.assertListEqual(a.shape.as_list(), [batch_size, horizon] + list(sz))
+
+            # rewards
+            self.assertIsInstance(trajectory.rewards, tf.Tensor)
+            self.assertListEqual(trajectory.rewards.shape.as_list(), [batch_size, horizon, reward_size])
+
+            # log_probs
+            self.assertIsInstance(trajectory.log_probs, tf.Tensor)
+            self.assertListEqual(trajectory.log_probs.shape.as_list(), [batch_size, horizon, log_prob_size])
