@@ -151,6 +151,9 @@ Trajectory = namedtuple('Trajectory', 'initial_state states actions interms rewa
 
 class MarkovRecurrentModel():
 
+    _FULLY_REPARAMETERIZED_FLAG = 0.0
+    _NOT_REPARAMETERIZED_FLAG = 1.0
+
     def __init__(self, compiler: Compiler, policy: DeepReactivePolicy, batch_size: int) -> None:
         self._cell = MRMCell(compiler, policy, batch_size)
 
@@ -180,9 +183,9 @@ class MarkovRecurrentModel():
     def stop_flags(self, horizon: int, reparam_type: ReparameterizationType):
         shape = (self.batch_size, horizon, 1)
         if reparam_type == ReparameterizationType.FULLY_REPARAMETERIZED:
-            flags = tf.constant(0.0, shape=shape, dtype=tf.float32, name='flags_fully_reparameterized')
+            flags = tf.constant(self._FULLY_REPARAMETERIZED_FLAG, shape=shape, dtype=tf.float32, name='flags_fully_reparameterized')
         elif reparam_type == ReparameterizationType.NOT_REPARAMETERIZED:
-            flags = tf.constant(1.0, shape=shape, dtype=tf.float32, name='flags_not_reparameterized')
+            flags = tf.constant(self._NOT_REPARAMETERIZED_FLAG, shape=shape, dtype=tf.float32, name='flags_not_reparameterized')
         return flags
 
     def inputs(self, timesteps, stop_flags):
@@ -205,7 +208,35 @@ class MarkovRecurrentModel():
 
     def reward_to_go(self, rewards):
         with self.graph.as_default():
-            return tf.cumsum(rewards, axis=1, exclusive=True, reverse=True)
+            q = tf.stop_gradient(tf.cumsum(rewards, axis=1, exclusive=True, reverse=True))
+            return q
+
+    def surrogate_loss(self, horizon: int, reparam_type: ReparameterizationType):
+
+        with self.graph.as_default():
+
+            initial_state = self._cell.initial_state()
+
+            timesteps = self.timesteps(horizon)
+            flags = self.stop_flags(horizon, reparam_type)
+            inputs = self.inputs(timesteps, flags)
+
+            trajectory = self.trajectory(initial_state, inputs)
+            rewards = trajectory.rewards
+            log_probs = trajectory.log_probs
+
+            q = self.reward_to_go(rewards)
+
+            reparam_rewards = tf.where(
+                tf.equal(flags, self._FULLY_REPARAMETERIZED_FLAG),
+                rewards,
+                rewards + log_probs * q,
+                name='reparam_rewards')
+
+            total_loss = tf.reduce_sum(reparam_rewards, axis=1, name='total_surrogate_loss')
+            loss = tf.reduce_mean(total_loss, name='surrogate_loss')
+
+            return loss
 
     @classmethod
     def _output(cls, fluents):
