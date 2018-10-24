@@ -264,11 +264,15 @@ class TestMarkovRecurrentModel(unittest.TestCase):
 
             with mrm.graph.as_default():
 
-                inputs1 = mrm.inputs(horizon, ReparameterizationType.FULLY_REPARAMETERIZED)
+                timesteps = mrm.timesteps(horizon)
+
+                flags1 = mrm.stop_flags(horizon, ReparameterizationType.FULLY_REPARAMETERIZED)
+                inputs1 = mrm.inputs(timesteps, flags1)
                 self.assertIsInstance(inputs1, tf.Tensor)
                 self.assertListEqual(inputs1.shape.as_list(), [batch_size, horizon, 2])
 
-                inputs2 = mrm.inputs(horizon, ReparameterizationType.NOT_REPARAMETERIZED)
+                flags2 = mrm.stop_flags(horizon, ReparameterizationType.NOT_REPARAMETERIZED)
+                inputs2 = mrm.inputs(timesteps, flags2)
                 self.assertIsInstance(inputs2, tf.Tensor)
                 self.assertListEqual(inputs2.shape.as_list(), [batch_size, horizon, 2])
 
@@ -298,7 +302,14 @@ class TestMarkovRecurrentModel(unittest.TestCase):
 
         for compiler, mrm, batch_size in zip(compilers, simulators, batch_sizes):
 
-            trajectory = mrm.trajectory(horizon, reparam_type)
+            with mrm.graph.as_default():
+                initial_state = mrm._cell.initial_state()
+
+                timesteps = mrm.timesteps(horizon)
+                flags = mrm.stop_flags(horizon, reparam_type)
+                inputs = mrm.inputs(timesteps, flags)
+
+                trajectory = mrm.trajectory(initial_state, inputs)
 
             self.assertIsInstance(trajectory, tuple)
             self.assertEqual(len(trajectory), 6)
@@ -343,8 +354,15 @@ class TestMarkovRecurrentModel(unittest.TestCase):
 
         for compiler, mrm, batch_size in zip(compilers, simulators, batch_sizes):
 
-            trajectory = mrm.trajectory(horizon, ReparameterizationType.NOT_REPARAMETERIZED)
-            q = mrm.reward_to_go(trajectory.rewards)
+            with mrm.graph.as_default():
+                initial_state = mrm._cell.initial_state()
+
+                timesteps = mrm.timesteps(horizon)
+                flags = mrm.stop_flags(horizon, ReparameterizationType.NOT_REPARAMETERIZED)
+                inputs = mrm.inputs(timesteps, flags)
+
+                trajectory = mrm.trajectory(initial_state, inputs)
+                q = mrm.reward_to_go(trajectory.rewards)
 
             self.assertIsInstance(q, tf.Tensor)
             self.assertEqual(q.dtype, tf.float32)

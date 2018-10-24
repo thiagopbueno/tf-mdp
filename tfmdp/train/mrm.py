@@ -185,17 +185,12 @@ class MarkovRecurrentModel():
             flags = tf.constant(1.0, shape=shape, dtype=tf.float32, name='flags_not_reparameterized')
         return flags
 
-    def inputs(self, horizon: int, reparam_type: ReparameterizationType):
-        steps = self.timesteps(horizon)
-        flags = self.stop_flags(horizon, reparam_type)
-        return tf.concat([steps, flags], axis=2, name='inputs')
+    def inputs(self, timesteps, stop_flags):
+        return tf.concat([timesteps, stop_flags], axis=2, name='inputs')
 
-    def trajectory(self, horizon: int, reparam_type: ReparameterizationType) -> Trajectory:
+    def trajectory(self, initial_state, inputs) -> Trajectory:
 
         with self.graph.as_default():
-
-            initial_state = self._cell.initial_state()
-            inputs = self.inputs(horizon, reparam_type)
 
             outputs, final_state = tf.nn.dynamic_rnn(
                 self._cell,
