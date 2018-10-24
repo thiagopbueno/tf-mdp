@@ -334,3 +334,18 @@ class TestMarkovRecurrentModel(unittest.TestCase):
             # log_probs
             self.assertIsInstance(trajectory.log_probs, tf.Tensor)
             self.assertListEqual(trajectory.log_probs.shape.as_list(), [batch_size, horizon, log_prob_size])
+
+    def test_reward_to_go(self):
+        horizon = 40
+        compilers = [self.compiler1]
+        simulators = [self.mrm1]
+        batch_sizes = [self.batch_size1]
+
+        for compiler, mrm, batch_size in zip(compilers, simulators, batch_sizes):
+
+            trajectory = mrm.trajectory(horizon, ReparameterizationType.NOT_REPARAMETERIZED)
+            q = mrm.reward_to_go(trajectory.rewards)
+
+            self.assertIsInstance(q, tf.Tensor)
+            self.assertEqual(q.dtype, tf.float32)
+            self.assertEqual(q.shape, trajectory.rewards.shape)

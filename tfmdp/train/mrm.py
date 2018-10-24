@@ -208,6 +208,10 @@ class MarkovRecurrentModel():
 
         return Trajectory(initial_state, *outputs)
 
+    def reward_to_go(self, rewards):
+        with self.graph.as_default():
+            return tf.cumsum(rewards, axis=1, exclusive=True, reverse=True)
+
     @classmethod
     def _output(cls, fluents):
         return tuple(f[0] for f in fluents)
