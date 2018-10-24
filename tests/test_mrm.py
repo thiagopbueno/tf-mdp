@@ -17,9 +17,9 @@ import rddlgym
 from rddl2tf.compiler import Compiler
 
 from tfmdp.train.policy import DeepReactivePolicy
-from tfmdp.train.mrm import MRMCell
+from tfmdp.train.mrm import MRMCell, MarkovRecurrentModel, ReparameterizationType
 
-
+import numpy as np
 import tensorflow as tf
 
 import unittest
@@ -200,3 +200,86 @@ class TestMRMCell(unittest.TestCase):
 
                 self.assertIsInstance(log_prob, tf.Tensor)
                 self.assertListEqual(log_prob.shape.as_list(), [batch_size, log_prob_size])
+
+
+class TestMarkovRecurrentModel(unittest.TestCase):
+
+    def setUp(self):
+        self.rddl1 = rddlgym.make('Navigation-v2', mode=rddlgym.AST)
+        self.compiler1 = Compiler(self.rddl1, batch_mode=True)
+
+        self.layers = [64, 32, 16]
+        self.policy1 = DeepReactivePolicy(self.compiler1, self.layers, tf.nn.elu, input_layer_norm=True)
+
+        self.batch_size1 = 100
+        self.mrm1 = MarkovRecurrentModel(self.compiler1, self.policy1, self.batch_size1)
+
+    def test_timesteps(self):
+        horizon = 40
+        simulators = [self.mrm1]
+        batch_sizes = [self.batch_size1]
+
+        for mrm, batch_size in zip(simulators, batch_sizes):
+
+            with mrm.graph.as_default():
+                timesteps = mrm.timesteps(horizon)
+
+            self.assertIsInstance(timesteps, tf.Tensor)
+            self.assertListEqual(timesteps.shape.as_list(), [batch_size, horizon, 1])
+
+            with tf.Session(graph=mrm.graph) as sess:
+                timesteps = sess.run(timesteps)
+
+                for t in timesteps:
+                    self.assertListEqual(list(t), list(np.arange(horizon-1, -1, -1)))
+
+    def test_stop_flags(self):
+        horizon = 40
+        simulators = [self.mrm1]
+        batch_sizes = [self.batch_size1]
+
+        for mrm, batch_size in zip(simulators, batch_sizes):
+
+            with mrm.graph.as_default():
+
+                stop_flags1 = mrm.stop_flags(horizon, ReparameterizationType.FULLY_REPARAMETERIZED)
+                self.assertIsInstance(stop_flags1, tf.Tensor)
+                self.assertListEqual(stop_flags1.shape.as_list(), [batch_size, horizon, 1])
+
+                stop_flags2 = mrm.stop_flags(horizon, ReparameterizationType.NOT_REPARAMETERIZED)
+                self.assertIsInstance(stop_flags2, tf.Tensor)
+                self.assertListEqual(stop_flags2.shape.as_list(), [batch_size, horizon, 1])
+
+                with tf.Session(graph=mrm.graph) as sess:
+                    stop_flags1, stop_flags2 = sess.run([stop_flags1, stop_flags2])
+                    self.assertTrue(np.all(stop_flags1 == np.zeros((batch_size, horizon, 1))))
+                    self.assertTrue(np.all(stop_flags2 == np.ones((batch_size, horizon, 1))))
+
+    def test_inputs(self):
+        horizon = 40
+        simulators = [self.mrm1]
+        batch_sizes = [self.batch_size1]
+
+        for mrm, batch_size in zip(simulators, batch_sizes):
+
+            with mrm.graph.as_default():
+
+                inputs1 = mrm.inputs(horizon, ReparameterizationType.FULLY_REPARAMETERIZED)
+                self.assertIsInstance(inputs1, tf.Tensor)
+                self.assertListEqual(inputs1.shape.as_list(), [batch_size, horizon, 2])
+
+                inputs2 = mrm.inputs(horizon, ReparameterizationType.NOT_REPARAMETERIZED)
+                self.assertIsInstance(inputs2, tf.Tensor)
+                self.assertListEqual(inputs2.shape.as_list(), [batch_size, horizon, 2])
+
+                with tf.Session(graph=mrm.graph) as sess:
+                    inputs1, inputs2 = sess.run([inputs1, inputs2])
+
+                    for t in inputs1:
+                        self.assertListEqual(list(t[:,0]), list(np.arange(horizon-1, -1, -1)))
+
+                    for t in inputs2:
+                        self.assertListEqual(list(t[:,0]), list(np.arange(horizon-1, -1, -1)))
+
+                    self.assertTrue(np.all(inputs1[:,:,1] == np.zeros((batch_size, horizon))))
+                    self.assertTrue(np.all(inputs2[:,:,1] == np.ones((batch_size, horizon))))

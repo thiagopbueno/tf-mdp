@@ -18,6 +18,7 @@ from rddl2tf.compiler import Compiler
 from rddl2tf.fluent import TensorFluent
 from tfmdp.train.policy import DeepReactivePolicy
 
+from enum import Enum
 import tensorflow as tf
 
 from typing import Iterable, Sequence, Optional, Tuple, Union
@@ -135,3 +136,46 @@ class MRMCell(tf.nn.rnn_cell.RNNCell):
     def _output(cls, fluents: Sequence[FluentTriple]) -> Sequence[tf.Tensor]:
         '''Returns output tensors for `fluents`.'''
         return tuple(cls._dtype(t) for t in cls._tensors(fluents))
+
+
+class ReparameterizationType(Enum):
+    FULLY_REPARAMETERIZED = 0
+    NOT_REPARAMETERIZED = 1
+    PARTIALLY_REPARAMETERIZED = 2
+
+
+class MarkovRecurrentModel():
+
+    def __init__(self, compiler: Compiler, policy: DeepReactivePolicy, batch_size: int) -> None:
+        self._cell = MRMCell(compiler, policy, batch_size)
+
+    @property
+    def graph(self):
+        '''Returns the computation graph.'''
+        return self._cell.graph
+
+    @property
+    def batch_size(self) -> int:
+        '''Returns the size of the simulation batch.'''
+        return self._cell._batch_size
+
+    def timesteps(self, horizon: int) -> tf.Tensor:
+        '''Returns the input tensor for the given `horizon`.'''
+        start, limit, delta = horizon - 1, -1, -1
+        timesteps_range = tf.range(start, limit, delta, dtype=tf.float32)
+        timesteps_range = tf.expand_dims(timesteps_range, -1)
+        batch_timesteps = tf.stack([timesteps_range] * self.batch_size, name='timesteps')
+        return batch_timesteps
+
+    def stop_flags(self, horizon: int, reparam_type: ReparameterizationType):
+        shape = (self.batch_size, horizon, 1)
+        if reparam_type == ReparameterizationType.FULLY_REPARAMETERIZED:
+            flags = tf.constant(0.0, shape=shape, dtype=tf.float32, name='flags_fully_reparameterized')
+        elif reparam_type == ReparameterizationType.NOT_REPARAMETERIZED:
+            flags = tf.constant(1.0, shape=shape, dtype=tf.float32, name='flags_not_reparameterized')
+        return flags
+
+    def inputs(self, horizon: int, reparam_type: ReparameterizationType):
+        steps = self.timesteps(horizon)
+        flags = self.stop_flags(horizon, reparam_type)
+        return tf.concat([steps, flags], axis=2, name='inputs')
