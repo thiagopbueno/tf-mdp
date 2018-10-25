@@ -17,6 +17,7 @@ import rddlgym
 
 from tfmdp.train.policy import DeepReactivePolicy
 from tfmdp.train.optimizer import PolicyOptimizer
+from tfmdp.train.mrm import MarkovRecurrentModel, ReparameterizationType
 from tfmdp.test.evaluator import PolicyEvaluator
 
 import numpy as np
@@ -25,15 +26,15 @@ import tensorflow as tf
 import unittest
 
 
-class TestPolicyOptimizer(unittest.TestCase):
+class TestPolicyEvaluator(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
 
         # hyper-parameters
-        cls.learning_rate = 0.0001
-        cls.epochs = 20
-        cls.batch_size = 64
+        cls.learning_rate = 0.001
+        cls.epochs = 10
+        cls.batch_size = 32
         cls.horizon = 20
 
         # model
@@ -47,14 +48,20 @@ class TestPolicyOptimizer(unittest.TestCase):
 
         # policy
         cls.layers = [64, 32, 16]
-        cls.policy = DeepReactivePolicy(cls.compiler, cls.layers, tf.nn.elu, input_layer_norm=True)
 
         # optimizer
-        cls.optimizer = PolicyOptimizer(cls.compiler, cls.policy)
+        cls.policy = DeepReactivePolicy(cls.compiler, cls.layers, tf.nn.elu, input_layer_norm=True)
+        cls.model = MarkovRecurrentModel(cls.compiler, cls.policy, cls.batch_size)
+        cls.model.build(cls.horizon, ReparameterizationType.FULLY_REPARAMETERIZED)
+        cls.optimizer = PolicyOptimizer(cls.model)
         cls.optimizer.build(cls.learning_rate, cls.batch_size, cls.horizon, tf.train.RMSPropOptimizer, tf.negative)
         cls.optimizer.run(cls.epochs, show_progress=False)
+        cls.save_path = cls.policy._checkpoint
 
         # evaluator
+        cls.compiler = rddlgym.make('Reservoir-8', mode=rddlgym.SCG)
+        cls.compiler.batch_mode_on()
+        cls.policy = DeepReactivePolicy(cls.compiler, cls.layers, tf.nn.elu, input_layer_norm=True)
         cls.evaluator = PolicyEvaluator(cls.compiler, cls.policy)
 
     def test_policy_variables(self):
@@ -73,7 +80,7 @@ class TestPolicyOptimizer(unittest.TestCase):
     def test_evaluation_run(self):
         horizon = 45
         batch_size = 1024
-        trajectories, _, _ = self.evaluator.run(horizon, batch_size)
+        trajectories, _, _ = self.evaluator.run(horizon, batch_size, self.save_path)
         self.assertIsInstance(trajectories, tuple)
         self.assertEqual(len(trajectories), 5)
 

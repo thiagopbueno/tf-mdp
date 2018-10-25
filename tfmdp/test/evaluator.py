@@ -23,7 +23,7 @@ import time
 import numpy as np
 import tensorflow as tf
 
-from typing import Sequence, Tuple
+from typing import Sequence, Optional, Tuple
 NonFluentsArray = Sequence[np.array]
 StateArray = Sequence[np.array]
 StatesArray = Sequence[np.array]
@@ -50,7 +50,7 @@ class PolicyEvaluator(object):
         '''Returns the compiler's graph.'''
         return self._compiler.graph
 
-    def run(self, horizon: int, batch_size: int) -> SimulationOutput:
+    def run(self, horizon: int, batch_size: int, save_path: Optional[str] = None) -> SimulationOutput:
         '''Runs the trajectory simulation ops for the deep reactive policy.
 
         Returns:
@@ -64,7 +64,7 @@ class PolicyEvaluator(object):
 
         start = time.time()
         with tf.Session(graph=self.graph) as sess:
-            self._policy.restore(sess)
+            self._policy.restore(sess, save_path)
             trajectories_ = sess.run(trajectories)
         end = time.time()
         inference_time = end - start
