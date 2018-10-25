@@ -37,7 +37,7 @@ CellOutput = Tuple[StatesTensor, ActionsTensor, IntermsTensor, tf.Tensor]
 CellState = Sequence[tf.Tensor]
 
 
-class MRMCell(tf.nn.rnn_cell.RNNCell):
+class MarkovCell(tf.nn.rnn_cell.RNNCell):
 
     def __init__(self, compiler: Compiler, policy: DeepReactivePolicy, batch_size: int) -> None:
         self._compiler = compiler
@@ -146,7 +146,7 @@ class ReparameterizationType(Enum):
     PARTIALLY_REPARAMETERIZED = 2
 
 
-Trajectory = namedtuple('Trajectory', 'initial_state states actions interms rewards log_probs')
+Trajectory = namedtuple('Trajectory', 'states actions interms rewards log_probs')
 
 
 class MarkovRecurrentModel():
@@ -155,7 +155,7 @@ class MarkovRecurrentModel():
     _NOT_REPARAMETERIZED_FLAG = 1.0
 
     def __init__(self, compiler: Compiler, policy: DeepReactivePolicy, batch_size: int) -> None:
-        self._cell = MRMCell(compiler, policy, batch_size)
+        self._cell = MarkovCell(compiler, policy, batch_size)
 
     @property
     def graph(self):
@@ -172,7 +172,44 @@ class MarkovRecurrentModel():
         '''Returns the simulation output size.'''
         return self._cell.output_size
 
-    def timesteps(self, horizon: int) -> tf.Tensor:
+
+    def build(self, horizon, reparam_type):
+        with self.graph.as_default():
+            with tf.name_scope('MRM'):
+                self._build_trajectory_graph(horizon, reparam_type)
+                self._build_total_reward_graph()
+                self._build_surrogate_reward_graph()
+
+    def _build_trajectory_graph(self, horizon, reparam_type):
+        self.initial_state = self._cell.initial_state()
+
+        self.timesteps = self._timesteps(horizon)
+        self.stop_flags = self._stop_flags(horizon, reparam_type)
+        self.inputs = self._inputs(self.timesteps, self.stop_flags)
+
+        self.trajectory = self._trajectory(self.initial_state, self.inputs)
+
+    def _build_total_reward_graph(self):
+        with tf.name_scope('total_reward'):
+            self.total_reward = tf.squeeze(tf.reduce_sum(self.trajectory.rewards, axis=1))
+
+    def _build_surrogate_reward_graph(self):
+        rewards = self.trajectory.rewards
+        log_probs = self.trajectory.log_probs
+
+        with tf.name_scope('surrogate_reward'):
+            self.q = self._reward_to_go(rewards)
+
+            self.reparam_rewards = tf.where(
+                tf.equal(self.stop_flags, self._FULLY_REPARAMETERIZED_FLAG),
+                rewards,
+                rewards + log_probs * self.q,
+                name='reparam_rewards')
+
+            self.total_surrogate_reward = tf.reduce_sum(self.reparam_rewards, axis=1, name='total_surrogate_reward')
+            self.surrogate_reward = tf.reduce_mean(self.total_surrogate_reward, name='surrogate_reward')
+
+    def _timesteps(self, horizon: int) -> tf.Tensor:
         '''Returns the input tensor for the given `horizon`.'''
         start, limit, delta = horizon - 1, -1, -1
         timesteps_range = tf.range(start, limit, delta, dtype=tf.float32)
@@ -180,7 +217,7 @@ class MarkovRecurrentModel():
         batch_timesteps = tf.stack([timesteps_range] * self.batch_size, name='timesteps')
         return batch_timesteps
 
-    def stop_flags(self, horizon: int, reparam_type: ReparameterizationType):
+    def _stop_flags(self, horizon: int, reparam_type: ReparameterizationType):
         shape = (self.batch_size, horizon, 1)
         if reparam_type == ReparameterizationType.FULLY_REPARAMETERIZED:
             flags = tf.constant(self._FULLY_REPARAMETERIZED_FLAG, shape=shape, dtype=tf.float32, name='flags_fully_reparameterized')
@@ -188,55 +225,22 @@ class MarkovRecurrentModel():
             flags = tf.constant(self._NOT_REPARAMETERIZED_FLAG, shape=shape, dtype=tf.float32, name='flags_not_reparameterized')
         return flags
 
-    def inputs(self, timesteps, stop_flags):
+    def _inputs(self, timesteps, stop_flags):
         return tf.concat([timesteps, stop_flags], axis=2, name='inputs')
 
-    def trajectory(self, initial_state, inputs) -> Trajectory:
+    def _trajectory(self, initial_state, inputs) -> Trajectory:
+        outputs, final_state = tf.nn.dynamic_rnn(
+            self._cell,
+            inputs,
+            initial_state=initial_state,
+            dtype=tf.float32,
+            scope="trajectory")
+        outputs = [self._output(fluents) for fluents in outputs[:3]] + list(outputs[3:])
+        return Trajectory(*outputs)
 
-        with self.graph.as_default():
-
-            outputs, final_state = tf.nn.dynamic_rnn(
-                self._cell,
-                inputs,
-                initial_state=initial_state,
-                dtype=tf.float32,
-                scope="trajectory")
-
-            outputs = [self._output(fluents) for fluents in outputs[:3]] + list(outputs[3:])
-
-        return Trajectory(initial_state, *outputs)
-
-    def reward_to_go(self, rewards):
-        with self.graph.as_default():
-            q = tf.stop_gradient(tf.cumsum(rewards, axis=1, exclusive=True, reverse=True))
-            return q
-
-    def surrogate_loss(self, horizon: int, reparam_type: ReparameterizationType):
-
-        with self.graph.as_default():
-
-            initial_state = self._cell.initial_state()
-
-            timesteps = self.timesteps(horizon)
-            flags = self.stop_flags(horizon, reparam_type)
-            inputs = self.inputs(timesteps, flags)
-
-            trajectory = self.trajectory(initial_state, inputs)
-            rewards = trajectory.rewards
-            log_probs = trajectory.log_probs
-
-            q = self.reward_to_go(rewards)
-
-            reparam_rewards = tf.where(
-                tf.equal(flags, self._FULLY_REPARAMETERIZED_FLAG),
-                rewards,
-                rewards + log_probs * q,
-                name='reparam_rewards')
-
-            total_loss = tf.reduce_sum(reparam_rewards, axis=1, name='total_surrogate_loss')
-            loss = tf.reduce_mean(total_loss, name='surrogate_loss')
-
-            return loss
+    def _reward_to_go(self, rewards):
+        q = tf.stop_gradient(tf.cumsum(rewards, axis=1, exclusive=True, reverse=True), name='reward_to_go')
+        return q
 
     @classmethod
     def _output(cls, fluents):
