@@ -173,7 +173,7 @@ class MarkovRecurrentModel():
         '''Returns the simulation output size.'''
         return self._cell.output_size
 
-    def build(self, horizon, reparam_type):
+    def build(self, horizon, reparam_type=ReparameterizationType.FULLY_REPARAMETERIZED):
         with self.graph.as_default():
             with tf.name_scope('MRM'):
                 self._build_trajectory_graph(horizon, reparam_type)

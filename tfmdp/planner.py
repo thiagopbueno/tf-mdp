@@ -15,6 +15,8 @@
 
 
 from tfmdp.train.policy import DeepReactivePolicy
+from tfmdp.train.mrm import MarkovRecurrentModel
+from tfmdp.train.simulator import PolicySimulationModel
 from tfmdp.train.optimizer import PolicyOptimizer
 
 import tensorflow as tf
@@ -70,7 +72,11 @@ class PolicyOptimizationPlanner(object):
             kernel_l1_regularizer=None, kernel_l2_regularizer=None,
             bias_l1_regularizer=None, bias_l2_regularizer=None):
 
-        self._optimizer = PolicyOptimizer(self._compiler, self._policy, self._logdir)
+        self._model = MarkovRecurrentModel(self._compiler, self._policy, batch_size)
+        # self._model = PolicySimulationModel(self._compiler, self._policy, batch_size)
+        self._model.build(horizon)
+
+        self._optimizer = PolicyOptimizer(self._model, self._logdir)
         self._optimizer.build(
             learning_rate, batch_size, horizon,
             self._optimizers[optimizer],
