@@ -16,6 +16,7 @@
 import rddlgym
 
 from tfmdp.train.policy import DeepReactivePolicy
+from tfmdp.train.mrm import MarkovRecurrentModel, ReparameterizationType
 from tfmdp.train.optimizer import PolicyOptimizer
 
 import numpy as np
@@ -50,8 +51,12 @@ class TestPolicyOptimizer(unittest.TestCase):
         cls.layers = [64, 32, 16]
         cls.policy = DeepReactivePolicy(cls.compiler, cls.layers, tf.nn.elu, input_layer_norm=True)
 
+        # model
+        cls.model = MarkovRecurrentModel(cls.compiler, cls.policy, cls.batch_size)
+        cls.model.build(cls.horizon, ReparameterizationType.FULLY_REPARAMETERIZED)
+
         # optimizer
-        cls.optimizer = PolicyOptimizer(cls.compiler, cls.policy)
+        cls.optimizer = PolicyOptimizer(cls.model)
         cls.optimizer.build(cls.learning_rate, cls.batch_size, cls.horizon, tf.train.RMSPropOptimizer, tf.negative)
 
     def test_policy_variables(self):
@@ -66,46 +71,6 @@ class TestPolicyOptimizer(unittest.TestCase):
 
             output_layer_variables = tf.trainable_variables('trajectory/policy/output/')
             self.assertEqual(len(output_layer_variables), 2 * len(self.action_fluents))
-
-    def test_state_trajectory(self):
-        states = self.optimizer.states
-        self.assertIsInstance(states, tuple, 'state trajectory is factored')
-        self.assertEqual(len(states), len(self.state_size), 'state trajectory has all states fluents')
-        for fluent, fluent_size in zip(states, self.state_size):
-            tensor_size = [self.batch_size, self.horizon] + list(fluent_size)
-            self.assertIsInstance(fluent, tf.Tensor, 'state fluent is a tensor')
-            self.assertListEqual(fluent.shape.as_list(), tensor_size, 'fluent size is [batch_size, horizon, state_fluent_size]')
-
-    def test_action_trajectory(self):
-        actions = self.optimizer.actions
-        self.assertIsInstance(actions, tuple, 'action trajectory is factored')
-        self.assertEqual(len(actions), len(self.action_size),
-            'action trajectory has all actions fluents')
-        for fluent, fluent_size in zip(actions, self.action_size):
-            tensor_size = [self.batch_size, self.horizon] + list(fluent_size)
-            self.assertIsInstance(fluent, tf.Tensor, 'action fluent is a tensor')
-            self.assertListEqual(fluent.shape.as_list(), tensor_size,
-                'fluent size is [batch_size, horizon, action_fluent_size]')
-
-    def test_rewards_trajectory(self):
-        rewards = self.optimizer.rewards
-        rewards_shape = [self.batch_size, self.horizon, 1]
-        self.assertIsInstance(rewards, tf.Tensor, 'reward trajectory is a tensor')
-        self.assertListEqual(rewards.shape.as_list(), rewards_shape ,
-            'reward shape is [batch_size, horizon, 1]')
-
-    def test_total_reward(self):
-        total_reward = self.optimizer.total_reward
-        self.assertIsInstance(total_reward, tf.Tensor, 'total reward is a tensor')
-        self.assertEqual(total_reward.dtype, tf.float32, 'total reward is a real tensor')
-        self.assertListEqual(total_reward.shape.as_list(), [self.batch_size],
-            'total reward has a scalar value for each trajectory')
-
-    def test_avg_total_reward(self):
-        avg_total_reward = self.optimizer.avg_total_reward
-        self.assertIsInstance(avg_total_reward, tf.Tensor, 'average total reward is a tensor')
-        self.assertEqual(avg_total_reward.dtype, tf.float32, 'average total reward is a real tensor')
-        self.assertListEqual(avg_total_reward.shape.as_list(), [], 'average total reward is a scalar')
 
     def test_optimization_objective(self):
         loss = self.optimizer.loss

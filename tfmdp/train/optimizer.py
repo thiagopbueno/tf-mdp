@@ -30,17 +30,15 @@ from typing import Callable, List, Optional, Sequence
 class PolicyOptimizer(object):
 
     def __init__(self,
-            compiler: Compiler,
-            policy: DeepReactivePolicy,
+            model,
             logdir: Optional[str] = None) -> None:
-        self._compiler = compiler
-        self._policy = policy
+        self._model = model
         self._logdir = logdir if logdir is not None else '/tmp'
 
     @property
     def graph(self) -> tf.Graph:
-        '''Returns the compiler's graph.'''
-        return self._compiler.graph
+        '''Returns the model's graph.'''
+        return self._model.graph
 
     def build(self,
             learning_rate: float,
@@ -52,7 +50,6 @@ class PolicyOptimizer(object):
             bias_regularizer: Optional[Callable[[tf.Tensor], tf.Tensor]] = None) -> None:
         with self.graph.as_default():
             with tf.name_scope('policy_optimizer'):
-                self._build_trajectory_graph(horizon, batch_size)
                 self._build_loss_graph(loss_op)
                 self._build_regularization_loss_graph(kernel_regularizer, bias_regularizer)
                 self._build_optimization_graph(optimizer, learning_rate)
@@ -82,33 +79,16 @@ class PolicyOptimizer(object):
                     rewards.append((step, reward_))
                     losses.append((step, loss_))
                     self._test_writer.add_summary(summary_, step)
-                    self._policy.save(sess)
+                    self._model._policy.save(sess)
 
                 if show_progress:
                     print('Epoch {0:5}: loss = {1:3.6f}\r'.format(step, loss_), end='')
 
-            print()
-            print('rewards =', rewards)
-
             return losses, rewards
-
-    def _build_trajectory_graph(self, horizon: int, batch_size: int) -> None:
-        '''Builds the (state, action, interm, reward) trajectory ops.'''
-        simulator = PolicySimulator(self._compiler, self._policy, batch_size)
-        trajectories = simulator.trajectory(horizon)
-        self.initial_state = trajectories[0]
-        self.states = trajectories[1]
-        self.actions = trajectories[2]
-        self.rewards = trajectories[4]
 
     def _build_loss_graph(self, loss_op: Callable[[tf.Tensor], tf.Tensor]) -> None:
         '''Builds the loss ops.'''
-        self.total_reward = tf.squeeze(tf.reduce_sum(self.rewards, axis=1))
-        self.avg_total_reward, self.variance_total_reward = tf.nn.moments(self.total_reward, axes=[0])
-        self.stddev_total_reward = tf.sqrt(self.variance_total_reward)
-        self.max_total_reward = tf.reduce_max(self.total_reward)
-        self.min_total_reward = tf.reduce_min(self.total_reward)
-        self.loss = loss_op(self.avg_total_reward)
+        self.loss = loss_op(self._model.surrogate_reward)
 
     def _build_regularization_loss_graph(self,
             kernel_regularizer: Optional[Callable[[tf.Tensor], tf.Tensor]] = None,
@@ -132,9 +112,14 @@ class PolicyOptimizer(object):
 
     def _build_summary_graph(self):
         '''Builds the summary ops.'''
+        self.avg_total_reward, self.variance_total_reward = tf.nn.moments(self._model.total_reward, axes=[0])
+        self.stddev_total_reward = tf.sqrt(self.variance_total_reward)
+        self.max_total_reward = tf.reduce_max(self._model.total_reward)
+        self.min_total_reward = tf.reduce_min(self._model.total_reward)
+
         tf.summary.scalar('loss', self.loss)
 
-        tf.summary.histogram('total_reward', self.total_reward)
+        tf.summary.histogram('total_reward', self._model.total_reward)
         tf.summary.scalar('avg_total_reward', self.avg_total_reward)
         tf.summary.scalar('stddev_total_reward', self.stddev_total_reward)
         tf.summary.scalar('max_total_reward', self.max_total_reward)

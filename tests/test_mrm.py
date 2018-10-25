@@ -368,8 +368,20 @@ class TestMarkovRecurrentModel(unittest.TestCase):
             self.assertEqual(q.dtype, tf.float32)
             self.assertEqual(q.shape, trajectory.rewards.shape)
 
-    def test_surrogate_loss_fully_reparameterized(self):
+    def test_total_reward(self):
+        horizon = 40
+        compilers = [self.compiler1]
+        simulators = [self.mrm1]
+        batch_sizes = [self.batch_size1]
 
+        for compiler, mrm, batch_size in zip(compilers, simulators, batch_sizes):
+            mrm.build(horizon, ReparameterizationType.FULLY_REPARAMETERIZED)
+            total_reward = mrm.total_reward
+            self.assertIsInstance(total_reward, tf.Tensor)
+            self.assertEqual(total_reward.dtype, tf.float32)
+            self.assertListEqual(total_reward.shape.as_list(), [batch_size])
+
+    def test_surrogate_loss_fully_reparameterized(self):
         horizon = 40
         compilers = [self.compiler1]
         simulators = [self.mrm1]

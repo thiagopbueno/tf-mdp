@@ -155,6 +155,7 @@ class MarkovRecurrentModel():
     _NOT_REPARAMETERIZED_FLAG = 1.0
 
     def __init__(self, compiler: Compiler, policy: DeepReactivePolicy, batch_size: int) -> None:
+        self._policy = policy
         self._cell = MarkovCell(compiler, policy, batch_size)
 
     @property
@@ -171,7 +172,6 @@ class MarkovRecurrentModel():
     def output_size(self) -> Tuple[Sequence[Shape], Sequence[Shape], Sequence[Shape], int, int]:
         '''Returns the simulation output size.'''
         return self._cell.output_size
-
 
     def build(self, horizon, reparam_type):
         with self.graph.as_default():
