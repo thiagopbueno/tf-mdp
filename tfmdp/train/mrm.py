@@ -78,14 +78,15 @@ class MarkovCell(tf.nn.rnn_cell.RNNCell):
             state: Sequence[tf.Tensor],
             scope: Optional[str] = None) -> Tuple[CellOutput, CellState]:
 
-        timestep, stop_flag = tf.split(input, [1, 1], axis=1)
+        # inputs
+        timestep, reparam = self._inputs(input)
 
         # action
-        action = self._policy(state, input)
+        action = self._policy(state, timestep)
 
         # next state
         transition_scope = self._compiler.transition_scope(state, action)
-        interm_fluents, next_state_fluents = self._compiler.compile_probabilistic_cpfs(transition_scope, self._batch_size)
+        interm_fluents, next_state_fluents = self._compiler.compile_probabilistic_cpfs(transition_scope, self._batch_size, reparam)
 
         # log_probs
         log_prob = self._log_prob(interm_fluents, next_state_fluents)
@@ -102,24 +103,40 @@ class MarkovCell(tf.nn.rnn_cell.RNNCell):
 
         return (output, next_state)
 
-    def _log_prob(self, interm_fluents, next_state_fluents):
+    def _inputs(self, input):
+        timestep, flags = tf.split(input, [1, 1], axis=1)
+        reparam = self._reparam(flags)
+        return timestep, reparam
 
+    def _reparam(self, reparam_flag):
         with self.graph.as_default():
+            with tf.name_scope('reparam_flags'):
+                return tf.equal(tf.squeeze(reparam_flag), MarkovRecurrentModel.FULLY_REPARAMETERIZED_FLAG)
 
-            interm_log_probs = [log_prob.tensor for _, _, log_prob in interm_fluents]
-            interm_log_prob = tf.reduce_sum(
-                tf.concat(interm_log_probs, axis=1, name='interm_log_probs'),
-                axis=1,
-                name='interm_log_prob')
+    def _log_prob(self, interm_fluents, next_state_fluents):
+        with self.graph.as_default():
+            with tf.name_scope('transition_log_prob'):
 
-            next_state_log_probs = [log_prob.tensor for _, _, log_prob in next_state_fluents]
-            next_state_log_prob = tf.reduce_sum(
-                tf.concat(next_state_log_probs, axis=1, name='next_state_log_probs'),
-                axis=1,
-                name='next_state_log_prob')
+                interm_log_probs = [log_prob.tensor for _, _, log_prob in interm_fluents if log_prob is not None]
+                if len(interm_log_probs) == 0:
+                    interm_log_prob = tf.constant(0.0, dtype=tf.float32, shape=(self._batch_size,))
+                else:
+                    interm_log_prob = tf.reduce_sum(
+                        tf.concat(interm_log_probs, axis=1, name='interm_log_probs'),
+                        axis=1,
+                        name='interm_log_prob')
 
-            log_prob = tf.expand_dims(interm_log_prob + next_state_log_prob, -1, name='log_prob')
-            return log_prob
+                next_state_log_probs = [log_prob.tensor for _, _, log_prob in next_state_fluents if log_prob is not None]
+                if len(next_state_log_probs) == 0:
+                    next_state_log_prob = tf.constant(0.0, dtype=tf.float32, shape=(self._batch_size,))
+                else:
+                    next_state_log_prob = tf.reduce_sum(
+                        tf.concat(next_state_log_probs, axis=1, name='next_state_log_probs'),
+                        axis=1,
+                        name='next_state_log_prob')
+
+                log_prob = tf.expand_dims(interm_log_prob + next_state_log_prob, -1, name='log_prob')
+                return log_prob
 
     @classmethod
     def _tensors(cls, fluents: Sequence[FluentTriple]) -> Iterable[tf.Tensor]:
@@ -151,8 +168,8 @@ Trajectory = namedtuple('Trajectory', 'states actions interms rewards log_probs'
 
 class MarkovRecurrentModel():
 
-    _FULLY_REPARAMETERIZED_FLAG = 0.0
-    _NOT_REPARAMETERIZED_FLAG = 1.0
+    FULLY_REPARAMETERIZED_FLAG = 0.0
+    NOT_REPARAMETERIZED_FLAG = 1.0
 
     def __init__(self, compiler: Compiler, policy: DeepReactivePolicy, batch_size: int) -> None:
         self._policy = policy
@@ -184,14 +201,14 @@ class MarkovRecurrentModel():
         self.initial_state = self._cell.initial_state()
 
         self.timesteps = self._timesteps(horizon)
-        self.stop_flags = self._stop_flags(horizon, reparam_type)
-        self.inputs = self._inputs(self.timesteps, self.stop_flags)
+        self.reparam_flags = self._reparam_flags(horizon, reparam_type)
+        self.inputs = self._inputs(self.timesteps, self.reparam_flags)
 
         self.trajectory = self._trajectory(self.initial_state, self.inputs)
 
     def _build_total_reward_graph(self):
         with tf.name_scope('total_reward'):
-            self.total_reward = tf.squeeze(tf.reduce_sum(self.trajectory.rewards, axis=1))
+            self.total_reward = tf.reduce_sum(tf.squeeze(self.trajectory.rewards), axis=1)
 
     def _build_surrogate_reward_graph(self):
         rewards = self.trajectory.rewards
@@ -201,13 +218,12 @@ class MarkovRecurrentModel():
             self.q = self._reward_to_go(rewards)
 
             self.reparam_rewards = tf.where(
-                tf.equal(self.stop_flags, self._FULLY_REPARAMETERIZED_FLAG),
+                tf.equal(self.reparam_flags, self.FULLY_REPARAMETERIZED_FLAG),
                 rewards,
                 rewards + log_probs * self.q,
                 name='reparam_rewards')
 
-            self.total_surrogate_reward = tf.reduce_sum(self.reparam_rewards, axis=1, name='total_surrogate_reward')
-            self.surrogate_reward = tf.reduce_mean(self.total_surrogate_reward, name='surrogate_reward')
+            self.total_surrogate_reward = tf.reduce_sum(tf.squeeze(self.reparam_rewards), axis=1, name='total_surrogate_reward')
 
     def _timesteps(self, horizon: int) -> tf.Tensor:
         '''Returns the input tensor for the given `horizon`.'''
@@ -217,16 +233,16 @@ class MarkovRecurrentModel():
         batch_timesteps = tf.stack([timesteps_range] * self.batch_size, name='timesteps')
         return batch_timesteps
 
-    def _stop_flags(self, horizon: int, reparam_type: ReparameterizationType):
+    def _reparam_flags(self, horizon: int, reparam_type: ReparameterizationType):
         shape = (self.batch_size, horizon, 1)
         if reparam_type == ReparameterizationType.FULLY_REPARAMETERIZED:
-            flags = tf.constant(self._FULLY_REPARAMETERIZED_FLAG, shape=shape, dtype=tf.float32, name='flags_fully_reparameterized')
+            flags = tf.constant(self.FULLY_REPARAMETERIZED_FLAG, shape=shape, dtype=tf.float32, name='flags_fully_reparameterized')
         elif reparam_type == ReparameterizationType.NOT_REPARAMETERIZED:
-            flags = tf.constant(self._NOT_REPARAMETERIZED_FLAG, shape=shape, dtype=tf.float32, name='flags_not_reparameterized')
+            flags = tf.constant(self.NOT_REPARAMETERIZED_FLAG, shape=shape, dtype=tf.float32, name='flags_not_reparameterized')
         return flags
 
-    def _inputs(self, timesteps, stop_flags):
-        return tf.concat([timesteps, stop_flags], axis=2, name='inputs')
+    def _inputs(self, timesteps, reparam_flags):
+        return tf.concat([timesteps, reparam_flags], axis=2, name='inputs')
 
     def _trajectory(self, initial_state, inputs) -> Trajectory:
         outputs, final_state = tf.nn.dynamic_rnn(

@@ -25,9 +25,9 @@ import tensorflow as tf
 class PolicyOptimizationPlanner(object):
 
     _loss_fn ={
-        'linear': lambda r: tf.losses.absolute_difference(0, r),
-        'mse': lambda r: tf.losses.mean_squared_error(0, r),
-        'huber': lambda r: tf.losses.huber_loss(0, r)
+        'linear': tf.losses.absolute_difference,
+        'mse': tf.losses.mean_squared_error,
+        'huber': tf.losses.huber_loss
     }
 
     _non_linearities = {

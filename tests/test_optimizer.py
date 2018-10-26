@@ -57,7 +57,7 @@ class TestPolicyOptimizer(unittest.TestCase):
 
         # optimizer
         cls.optimizer = PolicyOptimizer(cls.model)
-        cls.optimizer.build(cls.learning_rate, cls.batch_size, cls.horizon, tf.train.RMSPropOptimizer, tf.negative)
+        cls.optimizer.build(cls.learning_rate, cls.batch_size, cls.horizon, tf.train.RMSPropOptimizer, tf.losses.mean_squared_error)
 
     def test_policy_variables(self):
 

@@ -28,13 +28,13 @@ import unittest
 class TestMarkovCell(unittest.TestCase):
 
     def setUp(self):
-        self.rddl1 = rddlgym.make('Navigation-v2', mode=rddlgym.AST)
+        self.rddl1 = rddlgym.make('Navigation-v3', mode=rddlgym.AST)
         self.compiler1 = Compiler(self.rddl1, batch_mode=True)
 
         self.layers = [64, 32, 16]
-        self.policy1 = DeepReactivePolicy(self.compiler1, self.layers, tf.nn.elu, input_layer_norm=True)
+        self.policy1 = DeepReactivePolicy(self.compiler1, self.layers, tf.nn.elu, input_layer_norm=False)
 
-        self.batch_size1 = 100
+        self.batch_size1 = 8
         self.cell1 = MarkovCell(self.compiler1, self.policy1, self.batch_size1)
 
     def test_state_size(self):
@@ -75,15 +75,53 @@ class TestMarkovCell(unittest.TestCase):
                 timestep = tf.expand_dims(timestep, -1)
                 timestep = tf.stack([timestep] * batch_size)
 
-                # stop_flag
-                stop_flag = tf.constant(0.0, shape=(batch_size,1), dtype=tf.float32)
-
-                input = tf.concat([timestep, stop_flag], axis=1)
+                # reparam_flag
+                reparam_flag = tf.constant(0.0, shape=(batch_size,1), dtype=tf.float32)
+                input = tf.concat([timestep, reparam_flag], axis=1)
 
                 # simulation step
                 output, _ = cell(input, initial_state)
                 self.assertIsInstance(output, tuple)
                 self.assertEqual(len(output), 5)
+
+    def test_next_state_in_not_reparameterized_cell(self):
+        grad_a, grad_s = self._test_grad_next_state(MarkovRecurrentModel.NOT_REPARAMETERIZED_FLAG)
+        self.assertTrue(np.sum(grad_a) == 0.0)
+        self.assertTrue(np.sum(grad_s) == 0.0)
+
+    def test_next_state_in_fully_reparameterized_cell(self):
+        grad_a, grad_s = self._test_grad_next_state(MarkovRecurrentModel.FULLY_REPARAMETERIZED_FLAG)
+        self.assertTrue(np.sum(grad_a) != 0.0)
+        self.assertTrue(np.sum(grad_s) != 0.0)
+
+    def _test_grad_next_state(self, reparameterization_type):
+        horizon = 40
+        cells = [self.cell1]
+        batch_sizes = [self.batch_size1]
+        for cell, batch_size in zip(cells, batch_sizes):
+            with cell.graph.as_default():
+                # initial_state
+                initial_state = cell.initial_state()
+
+                # timestep
+                timestep = tf.constant(horizon, dtype=tf.float32)
+                timestep = tf.expand_dims(timestep, -1)
+                timestep = tf.stack([timestep] * batch_size)
+
+                # reparam_flag
+                reparam_flag = tf.constant(reparameterization_type, shape=(batch_size,1), dtype=tf.float32)
+                input = tf.concat([timestep, reparam_flag], axis=1)
+
+                # simulation step
+                output, _ = cell(input, initial_state)
+                next_state, action, _, _, _ = output
+
+                loss = tf.reduce_sum(next_state[0])
+                grad_a, grad_s = tf.gradients(ys=loss, xs=[action[0], initial_state[0]])
+
+                with tf.Session() as sess:
+                    sess.run(tf.global_variables_initializer())
+                    return sess.run([grad_a, grad_s])
 
     def test_next_state_output(self):
         horizon = 40
@@ -99,10 +137,10 @@ class TestMarkovCell(unittest.TestCase):
                 timestep = tf.expand_dims(timestep, -1)
                 timestep = tf.stack([timestep] * batch_size)
 
-                # stop_flag
-                stop_flag = tf.constant(0.0, shape=(batch_size,1), dtype=tf.float32)
+                # reparam_flag
+                reparam_flag = tf.constant(0.0, shape=(batch_size,1), dtype=tf.float32)
 
-                input = tf.concat([timestep, stop_flag], axis=1)
+                input = tf.concat([timestep, reparam_flag], axis=1)
 
                 # simulation step
                 output, _ = cell(input, initial_state)
@@ -130,10 +168,10 @@ class TestMarkovCell(unittest.TestCase):
                 timestep = tf.expand_dims(timestep, -1)
                 timestep = tf.stack([timestep] * batch_size)
 
-                # stop_flag
-                stop_flag = tf.constant(0.0, shape=(batch_size,1), dtype=tf.float32)
+                # reparam_flag
+                reparam_flag = tf.constant(0.0, shape=(batch_size,1), dtype=tf.float32)
 
-                input = tf.concat([timestep, stop_flag], axis=1)
+                input = tf.concat([timestep, reparam_flag], axis=1)
 
                 # simulation step
                 output, _ = cell(input, initial_state)
@@ -161,10 +199,10 @@ class TestMarkovCell(unittest.TestCase):
                 timestep = tf.expand_dims(timestep, -1)
                 timestep = tf.stack([timestep] * batch_size)
 
-                # stop_flag
-                stop_flag = tf.constant(0.0, shape=(batch_size,1), dtype=tf.float32)
+                # reparam_flag
+                reparam_flag = tf.constant(0.0, shape=(batch_size,1), dtype=tf.float32)
 
-                input = tf.concat([timestep, stop_flag], axis=1)
+                input = tf.concat([timestep, reparam_flag], axis=1)
 
                 # simulation step
                 output, _ = cell(input, initial_state)
@@ -174,7 +212,13 @@ class TestMarkovCell(unittest.TestCase):
                 self.assertIsInstance(reward, tf.Tensor)
                 self.assertListEqual(reward.shape.as_list(), [batch_size, reward_size])
 
-    def test_log_prob_output(self):
+    def test_log_prob_not_reparameterized_cell(self):
+        _test_log_prob_output(MarkovRecurrentModel.NOT_REPARAMETERIZED_FLAG)
+
+    def test_log_prob_fully_reparameterized_cell(self):
+        _test_log_prob_output(MarkovRecurrentModel.FULLY_REPARAMETERIZED_FLAG)
+
+    def _test_log_prob_output(self, reparameterization_type):
         horizon = 40
         cells = [self.cell1]
         batch_sizes = [self.batch_size1]
@@ -188,10 +232,10 @@ class TestMarkovCell(unittest.TestCase):
                 timestep = tf.expand_dims(timestep, -1)
                 timestep = tf.stack([timestep] * batch_size)
 
-                # stop_flag
-                stop_flag = tf.constant(0.0, shape=(batch_size,1), dtype=tf.float32)
+                # reparam_flag
+                reparam_flag = tf.constant(reparameterization_type, shape=(batch_size,1), dtype=tf.float32)
 
-                input = tf.concat([timestep, stop_flag], axis=1)
+                input = tf.concat([timestep, reparam_flag], axis=1)
 
                 # simulation step
                 output, _ = cell(input, initial_state)
@@ -201,11 +245,49 @@ class TestMarkovCell(unittest.TestCase):
                 self.assertIsInstance(log_prob, tf.Tensor)
                 self.assertListEqual(log_prob.shape.as_list(), [batch_size, log_prob_size])
 
+    def test_log_prob_fully_reparameterized_cell(self):
+        self._test_grad_log_prob(MarkovRecurrentModel.FULLY_REPARAMETERIZED_FLAG)
+
+    def test_log_prob_not_reparameterized_cell(self):
+        self._test_grad_log_prob(MarkovRecurrentModel.NOT_REPARAMETERIZED_FLAG)
+
+    def _test_grad_log_prob(self, reparameterization_type):
+        horizon = 40
+        cells = [self.cell1]
+        batch_sizes = [self.batch_size1]
+        for cell, batch_size in zip(cells, batch_sizes):
+            with cell.graph.as_default():
+                # initial_state
+                initial_state = cell.initial_state()
+
+                # timestep
+                timestep = tf.constant(horizon, dtype=tf.float32)
+                timestep = tf.expand_dims(timestep, -1)
+                timestep = tf.stack([timestep] * batch_size)
+
+                # reparam_flag
+                reparam_flag = tf.constant(reparameterization_type, shape=(batch_size,1), dtype=tf.float32)
+                input = tf.concat([timestep, reparam_flag], axis=1)
+
+                # simulation step
+                output, _ = cell(input, initial_state)
+                next_state, action, _, _, log_prob = output
+
+                loss = tf.reduce_sum(log_prob)
+                grad_a, grad_s, grad_ss = tf.gradients(ys=loss, xs=[action[0], initial_state[0], next_state[0]])
+                self.assertIsNone(grad_ss)
+
+                with tf.Session() as sess:
+                    sess.run(tf.global_variables_initializer())
+                    grad_a, grad_s= sess.run([grad_a, grad_s])
+                    self.assertTrue(np.sum(grad_a) != 0.0)
+                    self.assertTrue(np.sum(grad_s) != 0.0)
+
 
 class TestMarkovRecurrentModel(unittest.TestCase):
 
     def setUp(self):
-        self.rddl1 = rddlgym.make('Navigation-v2', mode=rddlgym.AST)
+        self.rddl1 = rddlgym.make('Navigation-v3', mode=rddlgym.AST)
         self.compiler1 = Compiler(self.rddl1, batch_mode=True)
 
         self.layers = [64, 32, 16]
@@ -233,7 +315,7 @@ class TestMarkovRecurrentModel(unittest.TestCase):
                 for t in timesteps:
                     self.assertListEqual(list(t), list(np.arange(horizon-1, -1, -1)))
 
-    def test_stop_flags(self):
+    def test_reparam_flags(self):
         horizon = 40
         simulators = [self.mrm1]
         batch_sizes = [self.batch_size1]
@@ -242,18 +324,18 @@ class TestMarkovRecurrentModel(unittest.TestCase):
 
             with mrm.graph.as_default():
 
-                stop_flags1 = mrm._stop_flags(horizon, ReparameterizationType.FULLY_REPARAMETERIZED)
-                self.assertIsInstance(stop_flags1, tf.Tensor)
-                self.assertListEqual(stop_flags1.shape.as_list(), [batch_size, horizon, 1])
+                reparam_flags1 = mrm._reparam_flags(horizon, ReparameterizationType.FULLY_REPARAMETERIZED)
+                self.assertIsInstance(reparam_flags1, tf.Tensor)
+                self.assertListEqual(reparam_flags1.shape.as_list(), [batch_size, horizon, 1])
 
-                stop_flags2 = mrm._stop_flags(horizon, ReparameterizationType.NOT_REPARAMETERIZED)
-                self.assertIsInstance(stop_flags2, tf.Tensor)
-                self.assertListEqual(stop_flags2.shape.as_list(), [batch_size, horizon, 1])
+                reparam_flags2 = mrm._reparam_flags(horizon, ReparameterizationType.NOT_REPARAMETERIZED)
+                self.assertIsInstance(reparam_flags2, tf.Tensor)
+                self.assertListEqual(reparam_flags2.shape.as_list(), [batch_size, horizon, 1])
 
                 with tf.Session(graph=mrm.graph) as sess:
-                    stop_flags1, stop_flags2 = sess.run([stop_flags1, stop_flags2])
-                    self.assertTrue(np.all(stop_flags1 == np.zeros((batch_size, horizon, 1))))
-                    self.assertTrue(np.all(stop_flags2 == np.ones((batch_size, horizon, 1))))
+                    reparam_flags1, reparam_flags2 = sess.run([reparam_flags1, reparam_flags2])
+                    self.assertTrue(np.all(reparam_flags1 == np.zeros((batch_size, horizon, 1))))
+                    self.assertTrue(np.all(reparam_flags2 == np.ones((batch_size, horizon, 1))))
 
     def test_inputs(self):
         horizon = 40
@@ -266,12 +348,12 @@ class TestMarkovRecurrentModel(unittest.TestCase):
 
                 timesteps = mrm._timesteps(horizon)
 
-                flags1 = mrm._stop_flags(horizon, ReparameterizationType.FULLY_REPARAMETERIZED)
+                flags1 = mrm._reparam_flags(horizon, ReparameterizationType.FULLY_REPARAMETERIZED)
                 inputs1 = mrm._inputs(timesteps, flags1)
                 self.assertIsInstance(inputs1, tf.Tensor)
                 self.assertListEqual(inputs1.shape.as_list(), [batch_size, horizon, 2])
 
-                flags2 = mrm._stop_flags(horizon, ReparameterizationType.NOT_REPARAMETERIZED)
+                flags2 = mrm._reparam_flags(horizon, ReparameterizationType.NOT_REPARAMETERIZED)
                 inputs2 = mrm._inputs(timesteps, flags2)
                 self.assertIsInstance(inputs2, tf.Tensor)
                 self.assertListEqual(inputs2.shape.as_list(), [batch_size, horizon, 2])
@@ -306,7 +388,7 @@ class TestMarkovRecurrentModel(unittest.TestCase):
                 initial_state = mrm._cell.initial_state()
 
                 timesteps = mrm._timesteps(horizon)
-                flags = mrm._stop_flags(horizon, reparam_type)
+                flags = mrm._reparam_flags(horizon, reparam_type)
                 inputs = mrm._inputs(timesteps, flags)
 
                 trajectory = mrm._trajectory(initial_state, inputs)
@@ -358,7 +440,7 @@ class TestMarkovRecurrentModel(unittest.TestCase):
                 initial_state = mrm._cell.initial_state()
 
                 timesteps = mrm._timesteps(horizon)
-                flags = mrm._stop_flags(horizon, ReparameterizationType.NOT_REPARAMETERIZED)
+                flags = mrm._reparam_flags(horizon, ReparameterizationType.NOT_REPARAMETERIZED)
                 inputs = mrm._inputs(timesteps, flags)
 
                 trajectory = mrm._trajectory(initial_state, inputs)
@@ -389,7 +471,7 @@ class TestMarkovRecurrentModel(unittest.TestCase):
 
         for compiler, mrm, batch_size in zip(compilers, simulators, batch_sizes):
             mrm.build(horizon, ReparameterizationType.FULLY_REPARAMETERIZED)
-            loss = mrm.surrogate_reward
+            loss = mrm.total_surrogate_reward
             self.assertIsInstance(loss, tf.Tensor)
             self.assertEqual(loss.dtype, tf.float32)
-            self.assertListEqual(loss.shape.as_list(), [])
+            self.assertListEqual(loss.shape.as_list(), [batch_size])
