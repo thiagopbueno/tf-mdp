@@ -103,7 +103,7 @@ class DeepReactivePolicy(Policy):
                     with tf.variable_scope(fluent_name):
                         layer = tf.contrib.layers.layer_norm(fluent_input)
                 layers.append(layer)
-            self.input_layer = tf.concat(layers, axis=0)
+            self.input_layer = tf.concat(layers, axis=1)
 
     def _hidden_layers(self):
         self.hidden = [self.input_layer]
