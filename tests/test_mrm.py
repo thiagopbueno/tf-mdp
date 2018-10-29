@@ -291,7 +291,7 @@ class TestMarkovRecurrentModel(unittest.TestCase):
         self.compiler1 = Compiler(self.rddl1, batch_mode=True)
 
         self.layers = [64, 32, 16]
-        self.policy1 = DeepReactivePolicy(self.compiler1, self.layers, tf.nn.elu, input_layer_norm=True)
+        self.policy1 = DeepReactivePolicy(self.compiler1, self.layers, tf.nn.elu, input_layer_norm=False)
 
         self.batch_size1 = 100
         self.mrm1 = MarkovRecurrentModel(self.compiler1, self.policy1, self.batch_size1)
@@ -464,14 +464,31 @@ class TestMarkovRecurrentModel(unittest.TestCase):
             self.assertListEqual(total_reward.shape.as_list(), [batch_size])
 
     def test_surrogate_loss_fully_reparameterized(self):
+        reparam_rewards, rewards, q, log_probs = self._test_surrogate_loss(ReparameterizationType.FULLY_REPARAMETERIZED)
+        self.assertTrue(np.all(reparam_rewards == rewards))
+
+    def test_surrogate_loss_not_reparameterized(self):
+        reparam_rewards, rewards, q, log_probs = self._test_surrogate_loss(ReparameterizationType.NOT_REPARAMETERIZED)
+        self.assertTrue(np.all(reparam_rewards == rewards + q * log_probs))
+
+    def _test_surrogate_loss(self, reparameterization_type):
         horizon = 40
         compilers = [self.compiler1]
         simulators = [self.mrm1]
         batch_sizes = [self.batch_size1]
 
         for compiler, mrm, batch_size in zip(compilers, simulators, batch_sizes):
-            mrm.build(horizon, ReparameterizationType.FULLY_REPARAMETERIZED)
+            mrm.build(horizon, reparameterization_type)
+            rewards = mrm.trajectory.rewards
+            q = mrm.q
+            log_probs = mrm.trajectory.log_probs
+            reparam_rewards = mrm.reparam_rewards
+
             loss = mrm.total_surrogate_reward
             self.assertIsInstance(loss, tf.Tensor)
             self.assertEqual(loss.dtype, tf.float32)
             self.assertListEqual(loss.shape.as_list(), [batch_size])
+
+            with tf.Session(graph=mrm.graph) as sess:
+                sess.run(tf.global_variables_initializer())
+                return sess.run([reparam_rewards, rewards, q, log_probs])
