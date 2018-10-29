@@ -52,9 +52,9 @@ class TestPolicyEvaluator(unittest.TestCase):
         # optimizer
         cls.policy = DeepReactivePolicy(cls.compiler, cls.layers, tf.nn.elu, input_layer_norm=True)
         cls.model = MarkovRecurrentModel(cls.compiler, cls.policy, cls.batch_size)
-        cls.model.build(cls.horizon, ReparameterizationType.FULLY_REPARAMETERIZED)
+        cls.model.build(cls.horizon, lambda x: -x, ReparameterizationType.FULLY_REPARAMETERIZED)
         cls.optimizer = PolicyOptimizer(cls.model)
-        cls.optimizer.build(cls.learning_rate, cls.batch_size, cls.horizon, tf.train.RMSPropOptimizer, tf.losses.mean_squared_error)
+        cls.optimizer.build(cls.learning_rate, cls.batch_size, cls.horizon, tf.train.RMSPropOptimizer)
         cls.optimizer.run(cls.epochs, show_progress=False)
         cls.save_path = cls.policy._checkpoint
 

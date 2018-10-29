@@ -44,12 +44,11 @@ class PolicyOptimizer(object):
             batch_size: int,
             horizon: int,
             optimizer: tf.train.Optimizer,
-            loss_op: Callable[[tf.Tensor], tf.Tensor],
             kernel_regularizer: Optional[Callable[[tf.Tensor], tf.Tensor]] = None,
             bias_regularizer: Optional[Callable[[tf.Tensor], tf.Tensor]] = None) -> None:
         with self.graph.as_default():
             with tf.name_scope('policy_optimizer'):
-                self._build_loss_graph(loss_op, batch_size)
+                self._build_loss_graph()
                 self._build_regularization_loss_graph(kernel_regularizer, bias_regularizer)
                 self._build_optimization_graph(optimizer, learning_rate)
                 self._build_summary_graph()
@@ -85,12 +84,9 @@ class PolicyOptimizer(object):
 
             return losses, rewards
 
-    def _build_loss_graph(self, loss_op: Callable[[tf.Tensor], tf.Tensor], batch_size: int) -> None:
+    def _build_loss_graph(self) -> None:
         '''Builds the loss ops.'''
-        labels = tf.constant(0.0, shape=(batch_size,), dtype=tf.float32)
-        predictions = self._model.total_surrogate_reward
-        loss_op(labels, predictions)
-        self.batch_loss = tf.losses.get_total_loss(False)
+        self.batch_loss = tf.reduce_sum(self._model.surrogate_batch_cost, axis=1, name='batch_loss')
         self.loss = tf.reduce_mean(self.batch_loss, name='loss')
 
     def _build_regularization_loss_graph(self,

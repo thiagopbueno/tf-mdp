@@ -73,6 +73,11 @@ def parse_args():
         help='bias L2-regularizer constant (default=0.0)'
     )
     parser.add_argument(
+        '-est', '--estimator',
+        type=str, choices=['pd', 'sf'], default='pd',
+        help='gradient estimator (pd=pathwise derivatives, sf=score function) (default=pd)'
+    )
+    parser.add_argument(
         '-b', '--batch-size',
         type=int, default=256,
         help='number of trajectories in a batch (default=256)'
@@ -100,7 +105,7 @@ def parse_args():
     )
     parser.add_argument(
         '-lfn', '--loss-fn',
-        type=str, choices=['linear', 'mse', 'huber'],
+        type=str, choices=['linear', 'mse'],
         default='linear',
         help='loss function (default=linear)'
     )
@@ -139,6 +144,7 @@ def print_parameters(args):
         print('horizon       = {}'.format(args.horizon))
         print()
         print('>> Optimization:')
+        print('estimator = {}'.format(args.estimator))
         print('optimizer     = {}'.format(args.optimizer))
         print('loss function = {}'.format(args.loss_fn))
         print('kernel l1-regularization = {}'.format(args.kernel_l1_regularizer))
@@ -155,6 +161,12 @@ def load_model(args):
 
 
 def solve(compiler, args):
+    from tfmdp.train.mrm import ReparameterizationType
+    if args.estimator == 'pd':
+        reparam_type = ReparameterizationType.FULLY_REPARAMETERIZED
+    elif args.estimator == 'sf':
+        reparam_type = ReparameterizationType.NOT_REPARAMETERIZED
+
     from tfmdp.planner import PolicyOptimizationPlanner
     planner = PolicyOptimizationPlanner(
         compiler,
@@ -165,7 +177,8 @@ def solve(compiler, args):
         args.optimizer,
         args.loss_fn,
         args.kernel_l1_regularizer, args.kernel_l2_regularizer,
-        args.bias_l1_regularizer, args.bias_l2_regularizer)
+        args.bias_l1_regularizer, args.bias_l2_regularizer,
+        reparam_type)
     rewards, policy, logdir = planner.run(args.epochs)
     return rewards, policy, logdir
 

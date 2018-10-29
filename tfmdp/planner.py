@@ -15,7 +15,7 @@
 
 
 from tfmdp.train.policy import DeepReactivePolicy
-from tfmdp.train.mrm import MarkovRecurrentModel
+from tfmdp.train.mrm import MarkovRecurrentModel, ReparameterizationType
 from tfmdp.train.simulator import PolicySimulationModel
 from tfmdp.train.optimizer import PolicyOptimizer
 
@@ -25,9 +25,9 @@ import tensorflow as tf
 class PolicyOptimizationPlanner(object):
 
     _loss_fn ={
-        'linear': tf.losses.absolute_difference,
-        'mse': tf.losses.mean_squared_error,
-        'huber': tf.losses.huber_loss
+        'linear': lambda c: tf.abs(0 - c),
+        'mse': lambda c: tf.square(0 - c),
+        # 'huber': tf.losses.huber_loss
     }
 
     _non_linearities = {
@@ -70,17 +70,21 @@ class PolicyOptimizationPlanner(object):
             optimizer='RMSProp',
             loss='linear',
             kernel_l1_regularizer=None, kernel_l2_regularizer=None,
-            bias_l1_regularizer=None, bias_l2_regularizer=None):
+            bias_l1_regularizer=None, bias_l2_regularizer=None,
+            reparameterization_type=None):
+
+        # self._model = PolicySimulationModel(self._compiler, self._policy, batch_size)
+        # self._model.build(horizon)
 
         self._model = MarkovRecurrentModel(self._compiler, self._policy, batch_size)
-        # self._model = PolicySimulationModel(self._compiler, self._policy, batch_size)
-        self._model.build(horizon)
+        if reparameterization_type is None:
+            reparameterization_type = ReparameterizationType.FULLY_REPARAMETERIZED
+        self._model.build(horizon, self._loss_fn[loss], reparameterization_type)
 
         self._optimizer = PolicyOptimizer(self._model, self._logdir)
         self._optimizer.build(
             learning_rate, batch_size, horizon,
             self._optimizers[optimizer],
-            self._loss_fn[loss],
             self._get_regularizer(kernel_l1_regularizer, kernel_l2_regularizer),
             self._get_regularizer(bias_l1_regularizer, bias_l2_regularizer))
 

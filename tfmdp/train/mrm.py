@@ -190,12 +190,12 @@ class MarkovRecurrentModel():
         '''Returns the simulation output size.'''
         return self._cell.output_size
 
-    def build(self, horizon, reparam_type=ReparameterizationType.FULLY_REPARAMETERIZED):
+    def build(self, horizon, loss_op, reparam_type=ReparameterizationType.FULLY_REPARAMETERIZED):
         with self.graph.as_default():
             with tf.name_scope('MRM'):
                 self._build_trajectory_graph(horizon, reparam_type)
-                self._build_total_reward_graph()
-                self._build_surrogate_reward_graph()
+                self._build_total_cost_graph()
+                self._build_surrogate_cost_graph(loss_op)
 
     def _build_trajectory_graph(self, horizon, reparam_type):
         self.initial_state = self._cell.initial_state()
@@ -206,24 +206,27 @@ class MarkovRecurrentModel():
 
         self.trajectory = self._trajectory(self.initial_state, self.inputs)
 
-    def _build_total_reward_graph(self):
+    def _build_total_cost_graph(self):
         with tf.name_scope('total_reward'):
             self.total_reward = tf.reduce_sum(tf.squeeze(self.trajectory.rewards), axis=1)
 
-    def _build_surrogate_reward_graph(self):
+    def _build_surrogate_cost_graph(self, loss_op):
         rewards = self.trajectory.rewards
         log_probs = self.trajectory.log_probs
 
-        with tf.name_scope('surrogate_reward'):
-            self.q = self._reward_to_go(rewards)
+        with tf.name_scope('surrogate_cost'):
 
-            self.reparam_rewards = tf.where(
+            self.costs = loss_op(rewards)
+
+            self.q = self._reward_to_go(self.costs)
+
+            self.surrogate_batch_cost = tf.where(
                 tf.equal(self.reparam_flags, self.FULLY_REPARAMETERIZED_FLAG),
-                rewards,
-                rewards + log_probs * self.q,
-                name='reparam_rewards')
+                self.costs,
+                self.costs + log_probs * self.q,
+                name='batch_cost')
 
-            self.total_surrogate_reward = tf.reduce_sum(tf.squeeze(self.reparam_rewards), axis=1, name='total_surrogate_reward')
+            # self.total_surrogate_reward = tf.reduce_sum(tf.squeeze(self.reparam_rewards), axis=1, name='total_surrogate_reward')
 
     def _timesteps(self, horizon: int) -> tf.Tensor:
         '''Returns the input tensor for the given `horizon`.'''

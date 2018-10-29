@@ -457,19 +457,19 @@ class TestMarkovRecurrentModel(unittest.TestCase):
         batch_sizes = [self.batch_size1]
 
         for compiler, mrm, batch_size in zip(compilers, simulators, batch_sizes):
-            mrm.build(horizon, ReparameterizationType.FULLY_REPARAMETERIZED)
+            mrm.build(horizon, lambda x: -x, ReparameterizationType.FULLY_REPARAMETERIZED)
             total_reward = mrm.total_reward
             self.assertIsInstance(total_reward, tf.Tensor)
             self.assertEqual(total_reward.dtype, tf.float32)
             self.assertListEqual(total_reward.shape.as_list(), [batch_size])
 
     def test_surrogate_loss_fully_reparameterized(self):
-        reparam_rewards, rewards, q, log_probs = self._test_surrogate_loss(ReparameterizationType.FULLY_REPARAMETERIZED)
-        self.assertTrue(np.all(reparam_rewards == rewards))
+        surrogate_batch_cost, costs, q, log_probs = self._test_surrogate_loss(ReparameterizationType.FULLY_REPARAMETERIZED)
+        self.assertTrue(np.all(surrogate_batch_cost == costs))
 
     def test_surrogate_loss_not_reparameterized(self):
-        reparam_rewards, rewards, q, log_probs = self._test_surrogate_loss(ReparameterizationType.NOT_REPARAMETERIZED)
-        self.assertTrue(np.all(reparam_rewards == rewards + q * log_probs))
+        surrogate_batch_cost, costs, q, log_probs = self._test_surrogate_loss(ReparameterizationType.NOT_REPARAMETERIZED)
+        self.assertTrue(np.all(surrogate_batch_cost == costs + log_probs * q))
 
     def _test_surrogate_loss(self, reparameterization_type):
         horizon = 40
@@ -478,17 +478,12 @@ class TestMarkovRecurrentModel(unittest.TestCase):
         batch_sizes = [self.batch_size1]
 
         for compiler, mrm, batch_size in zip(compilers, simulators, batch_sizes):
-            mrm.build(horizon, reparameterization_type)
-            rewards = mrm.trajectory.rewards
+            mrm.build(horizon, lambda x: -x, reparameterization_type)
+            costs = mrm.costs
             q = mrm.q
             log_probs = mrm.trajectory.log_probs
-            reparam_rewards = mrm.reparam_rewards
-
-            loss = mrm.total_surrogate_reward
-            self.assertIsInstance(loss, tf.Tensor)
-            self.assertEqual(loss.dtype, tf.float32)
-            self.assertListEqual(loss.shape.as_list(), [batch_size])
+            surrogate_batch_cost = mrm.surrogate_batch_cost
 
             with tf.Session(graph=mrm.graph) as sess:
                 sess.run(tf.global_variables_initializer())
-                return sess.run([reparam_rewards, rewards, q, log_probs])
+                return sess.run([surrogate_batch_cost, costs, q, log_probs])
