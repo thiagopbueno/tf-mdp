@@ -191,6 +191,7 @@ class MarkovRecurrentModel():
         return self._cell.output_size
 
     def build(self, horizon, loss_op, reparam_type=ReparameterizationType.FULLY_REPARAMETERIZED):
+        self.horizon = horizon
         with self.graph.as_default():
             with tf.name_scope('MRM'):
                 self._build_trajectory_graph(horizon, reparam_type)
@@ -230,10 +231,11 @@ class MarkovRecurrentModel():
 
     def _timesteps(self, horizon: int) -> tf.Tensor:
         '''Returns the input tensor for the given `horizon`.'''
-        start, limit, delta = horizon - 1, -1, -1
-        timesteps_range = tf.range(start, limit, delta, dtype=tf.float32)
-        timesteps_range = tf.expand_dims(timesteps_range, -1)
-        batch_timesteps = tf.stack([timesteps_range] * self.batch_size, name='timesteps')
+        with tf.name_scope('timesteps'):
+            start, limit, delta = horizon - 1, -1, -1
+            timesteps_range = tf.range(start, limit, delta, dtype=tf.float32)
+            timesteps_range = tf.expand_dims(timesteps_range, -1)
+            batch_timesteps = tf.stack([timesteps_range] * self.batch_size)
         return batch_timesteps
 
     def _reparam_flags(self, horizon: int, reparam_type: ReparameterizationType):
@@ -242,6 +244,17 @@ class MarkovRecurrentModel():
             flags = tf.constant(self.FULLY_REPARAMETERIZED_FLAG, shape=shape, dtype=tf.float32, name='flags_fully_reparameterized')
         elif reparam_type == ReparameterizationType.NOT_REPARAMETERIZED:
             flags = tf.constant(self.NOT_REPARAMETERIZED_FLAG, shape=shape, dtype=tf.float32, name='flags_not_reparameterized')
+        elif isinstance(reparam_type, tuple):
+            if reparam_type[0] == ReparameterizationType.PARTIALLY_REPARAMETERIZED:
+                flags = []
+                for t in range(horizon):
+                    if (t+1) % reparam_type[1] == 0:
+                        flags.append(self.NOT_REPARAMETERIZED_FLAG)
+                    else:
+                        flags.append(self.FULLY_REPARAMETERIZED_FLAG)
+                with tf.name_scope('flags_n_step_partially_reparameterized'):
+                    flags = tf.stack([flags] * self.batch_size, name='')
+                    flags = tf.expand_dims(flags, -1)
         return flags
 
     def _inputs(self, timesteps, reparam_flags):

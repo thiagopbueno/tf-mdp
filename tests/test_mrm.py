@@ -316,7 +316,7 @@ class TestMarkovRecurrentModel(unittest.TestCase):
                     self.assertListEqual(list(t), list(np.arange(horizon-1, -1, -1)))
 
     def test_reparam_flags(self):
-        horizon = 40
+        horizon = 20
         simulators = [self.mrm1]
         batch_sizes = [self.batch_size1]
 
@@ -332,10 +332,22 @@ class TestMarkovRecurrentModel(unittest.TestCase):
                 self.assertIsInstance(reparam_flags2, tf.Tensor)
                 self.assertListEqual(reparam_flags2.shape.as_list(), [batch_size, horizon, 1])
 
+                n_step = 5
+                reparam_flags3 = mrm._reparam_flags(horizon, (ReparameterizationType.PARTIALLY_REPARAMETERIZED, n_step))
+                self.assertIsInstance(reparam_flags3, tf.Tensor)
+                self.assertListEqual(reparam_flags3.shape.as_list(), [batch_size, horizon, 1])
+
+                not_reparam_constant = MarkovRecurrentModel.NOT_REPARAMETERIZED_FLAG
+                fully_reparam_constant = MarkovRecurrentModel.FULLY_REPARAMETERIZED_FLAG
                 with tf.Session(graph=mrm.graph) as sess:
-                    reparam_flags1, reparam_flags2 = sess.run([reparam_flags1, reparam_flags2])
-                    self.assertTrue(np.all(reparam_flags1 == np.zeros((batch_size, horizon, 1))))
-                    self.assertTrue(np.all(reparam_flags2 == np.ones((batch_size, horizon, 1))))
+                    f1, f2, f3 = sess.run([reparam_flags1, reparam_flags2, reparam_flags3])
+                    self.assertTrue(np.all(f1 == fully_reparam_constant))
+                    self.assertTrue(np.all(f2 == not_reparam_constant))
+
+                    self.assertTrue(all(flag == not_reparam_constant for t, flag in enumerate(f3[0, :, 0]) if (t+1) % n_step == 0))
+                    self.assertTrue(all(flag == fully_reparam_constant for t, flag in enumerate(f3[0, :, 0]) if (t+1) % n_step != 0))
+                    for batch_flags in f3:
+                        self.assertTrue(np.all(batch_flags == f3[0]))
 
     def test_inputs(self):
         horizon = 40

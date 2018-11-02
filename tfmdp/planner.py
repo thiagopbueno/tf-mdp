@@ -81,7 +81,7 @@ class PolicyOptimizationPlanner(object):
             reparameterization_type = ReparameterizationType.FULLY_REPARAMETERIZED
         self._model.build(horizon, self._loss_fn[loss], reparameterization_type)
 
-        self._optimizer = PolicyOptimizer(self._model, self._logdir)
+        self._optimizer = PolicyOptimizer(self._model, self._logdir, debug=False)
         self._optimizer.build(
             learning_rate, batch_size, horizon,
             self._optimizers[optimizer],

@@ -74,8 +74,13 @@ def parse_args():
     )
     parser.add_argument(
         '-est', '--estimator',
-        type=str, choices=['pd', 'sf'], default='pd',
-        help='gradient estimator (pd=pathwise derivatives, sf=score function) (default=pd)'
+        type=str, choices=['pd', 'sf', 'hybrid'], default='pd',
+        help='gradient estimator (pd=pathwise derivatives, sf=score function, hybrid=pd+sf) (default=pd)'
+    )
+    parser.add_argument(
+        '-n', '--n-step',
+        type=int,
+        help='n-step hybrid estimator'
     )
     parser.add_argument(
         '-b', '--batch-size',
@@ -145,6 +150,8 @@ def print_parameters(args):
         print()
         print('>> Optimization:')
         print('estimator = {}'.format(args.estimator))
+        if args.n_step:
+            print('n-step = {}'.format(args.n_step))
         print('optimizer     = {}'.format(args.optimizer))
         print('loss function = {}'.format(args.loss_fn))
         print('kernel l1-regularization = {}'.format(args.kernel_l1_regularizer))
@@ -166,6 +173,8 @@ def solve(compiler, args):
         reparam_type = ReparameterizationType.FULLY_REPARAMETERIZED
     elif args.estimator == 'sf':
         reparam_type = ReparameterizationType.NOT_REPARAMETERIZED
+    elif args.estimator == 'hybrid':
+        reparam_type = (ReparameterizationType.PARTIALLY_REPARAMETERIZED, args.n_step)
 
     from tfmdp.planner import PolicyOptimizationPlanner
     planner = PolicyOptimizationPlanner(
