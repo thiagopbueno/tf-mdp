@@ -73,9 +73,6 @@ class PolicyOptimizationPlanner(object):
             bias_l1_regularizer=None, bias_l2_regularizer=None,
             reparameterization_type=None):
 
-        # self._model = PolicySimulationModel(self._compiler, self._policy, batch_size)
-        # self._model.build(horizon)
-
         self._model = MarkovRecurrentModel(self._compiler, self._policy, batch_size)
         if reparameterization_type is None:
             reparameterization_type = ReparameterizationType.FULLY_REPARAMETERIZED
