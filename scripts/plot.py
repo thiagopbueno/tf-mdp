@@ -59,8 +59,8 @@ def time_schedule(uptime, epochs):
 
 
 def plot_result_curve(model, xs, ys_mean, ys_stddev, epochs, learning_rate, batch_size):
-    plt.plot(xs, ys_mean, label='tf-mdp ({})'.format(model))
-    plt.fill_between(xs, ys_mean - ys_stddev, ys_mean + ys_stddev,
+    plt.plot(xs, -ys_mean, label='tf-mdp ({})'.format(model))
+    plt.fill_between(xs, -(ys_mean - ys_stddev), -(ys_mean + ys_stddev),
         alpha=0.2)
     plt.title('Training (epochs = {}, {}, {})'.format(epochs, batch_size, learning_rate),
         fontsize=14, fontweight='bold')
@@ -83,7 +83,7 @@ def plot_results(results, epochs):
 
 def plot_baselines(xs, baselines):
     for epochs, (avg, stddev) in baselines.items():
-        avg = np.array([float(avg)] * len(xs))
+        avg = -np.array([float(avg)] * len(xs))
         stddev = np.array([float(stddev)] * len(xs))
         plt.plot(xs, avg, '--', label='tf-plan (epochs/step={})'.format(epochs))
         # plt.fill_between(xs, avg - stddev, avg + stddev,
@@ -112,7 +112,7 @@ if __name__ == '__main__':
     xs = time_schedule(max_uptime, epochs)
     plot_baselines(xs, baselines)
 
-    plt.legend(loc='lower right', fontsize='x-large')
+    plt.legend(loc='upper right', fontsize='x-large')
     plt.grid()
     # plt.show()
     
