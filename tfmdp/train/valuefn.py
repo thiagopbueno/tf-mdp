@@ -76,6 +76,21 @@ class Value():
 
             return losses
 
+    def save(self, sess, save_path=None):
+        if self._saver is None:
+            self._saver = tf.train.Saver(self._trainable_variables())
+        if save_path is None:
+            save_path = '/tmp/{}/model.ckpt'.format(self.name)
+        self._checkpoint = self._saver.save(sess, save_path)
+        return self._checkpoint
+
+    def restore(self, sess, save_path=None):
+        if self._saver is None:
+            self._saver = tf.train.Saver(self._trainable_variables())
+        if save_path is None:
+            save_path = self._checkpoint
+        self._saver.restore(sess, save_path)
+
     def __call__(self, state, timestep):
         state_fluents = self._compiler.state_fluent_ordering
         state_size = self._compiler.state_size
