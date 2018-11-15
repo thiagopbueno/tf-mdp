@@ -210,7 +210,7 @@ class TestMarkovCell(unittest.TestCase):
                 _, _, _, reward_size, _ = cell.output_size
 
                 self.assertIsInstance(reward, tf.Tensor)
-                self.assertListEqual(reward.shape.as_list(), [batch_size, reward_size])
+                self.assertListEqual(reward.shape.as_list(), [batch_size, 1])
 
     def test_log_prob_not_reparameterized_cell(self):
         _test_log_prob_output(MarkovRecurrentModel.NOT_REPARAMETERIZED_FLAG)

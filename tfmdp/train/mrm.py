@@ -52,17 +52,17 @@ class MarkovCell(tf.nn.rnn_cell.RNNCell):
     @property
     def state_size(self) -> Sequence[Shape]:
         '''Returns the MDP state size.'''
-        return self._compiler.state_size
+        return self._sizes(self._compiler.state_size)
 
     @property
     def action_size(self) -> Sequence[Shape]:
         '''Returns the MDP action size.'''
-        return self._compiler.action_size
+        return self._sizes(self._compiler.action_size)
 
     @property
     def interm_size(self) -> Sequence[Shape]:
         '''Returns the MDP intermediate state size.'''
-        return self._compiler.interm_size
+        return self._sizes(self._compiler.interm_size)
 
     @property
     def output_size(self) -> Tuple[Sequence[Shape], Sequence[Shape], Sequence[Shape], int, int]:
@@ -71,7 +71,11 @@ class MarkovCell(tf.nn.rnn_cell.RNNCell):
 
     def initial_state(self) -> StateTensor:
         '''Returns the initial state tensor.'''
-        return self._compiler.compile_initial_state(self._batch_size)
+        s0 = []
+        for fluent in self._compiler.compile_initial_state(self._batch_size):
+            s0.append(self._output_size(fluent))
+        s0 = tuple(s0)
+        return s0
 
     def __call__(self,
             input: tf.Tensor,
@@ -94,7 +98,7 @@ class MarkovCell(tf.nn.rnn_cell.RNNCell):
         # reward
         transition_scope.update({name: fluent for name, fluent, _ in next_state_fluents})
         reward = self._compiler.compile_reward(transition_scope)
-        reward = reward.tensor
+        reward = self._output_size(reward.tensor)
 
         # outputs
         interm_state = self._output(interm_fluents)
@@ -137,6 +141,16 @@ class MarkovCell(tf.nn.rnn_cell.RNNCell):
 
                 log_prob = tf.expand_dims(interm_log_prob + next_state_log_prob, -1, name='log_prob')
                 return log_prob
+
+    @classmethod
+    def _sizes(cls, sizes: Sequence[Shape]) -> Sequence[Union[Shape, int]]:
+        return tuple(sz if sz != () else (1,) for sz in sizes)
+
+    @classmethod
+    def _output_size(cls, tensor):
+        if tensor.shape.ndims == 1:
+            tensor = tf.expand_dims(tensor, -1)
+        return tensor
 
     @classmethod
     def _tensors(cls, fluents: Sequence[FluentTriple]) -> Iterable[tf.Tensor]:
