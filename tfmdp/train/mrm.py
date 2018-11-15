@@ -16,7 +16,9 @@
 
 from rddl2tf.compiler import Compiler
 from rddl2tf.fluent import TensorFluent
+
 from tfmdp.train.policy import DeepReactivePolicy
+from tfmdp.train.valuefn import Value
 
 from collections import namedtuple
 from enum import Enum
@@ -204,13 +206,16 @@ class MarkovRecurrentModel():
         '''Returns the simulation output size.'''
         return self._cell.output_size
 
-    def build(self, horizon, loss_op, reparam_type=ReparameterizationType.FULLY_REPARAMETERIZED):
+    def build(self, horizon, loss_op, reparam_type=ReparameterizationType.FULLY_REPARAMETERIZED, baseline_fn=None):
         self.horizon = horizon
+        self._baseline_fn = baseline_fn
         with self.graph.as_default():
             with tf.name_scope('MRM'):
                 self._build_trajectory_graph(horizon, reparam_type)
                 self._build_total_cost_graph()
-                self._build_surrogate_cost_graph(loss_op)
+                if baseline_fn:
+                    self._build_baseline_graph(baseline_fn)
+                self._build_surrogate_cost_graph(loss_op, baseline_fn)
 
     def _build_trajectory_graph(self, horizon, reparam_type):
         self.initial_state = self._cell.initial_state()
@@ -225,7 +230,19 @@ class MarkovRecurrentModel():
         with tf.name_scope('total_reward'):
             self.total_reward = tf.reduce_sum(tf.squeeze(self.trajectory.rewards), axis=1)
 
-    def _build_surrogate_cost_graph(self, loss_op):
+    def _build_baseline_graph(self, baseline_fn):
+        states = self.trajectory.states
+
+        with tf.name_scope('baseline'):
+            b_t = []
+            for t in range(self.horizon):
+                state = tuple(fluent[:, t, :] for fluent in states)
+                t = tf.cast(tf.squeeze(self.timesteps[:, t, :]), tf.int32)
+                b = baseline_fn(state, t)
+                b_t.append(b)
+            self._baseline = tf.stop_gradient(tf.expand_dims(tf.stack(b_t, axis=1), -1))
+
+    def _build_surrogate_cost_graph(self, loss_op, baseline_fn):
         rewards = self.trajectory.rewards
         log_probs = self.trajectory.log_probs
 
@@ -235,11 +252,18 @@ class MarkovRecurrentModel():
 
             self.q = self._reward_to_go(self.costs)
 
-            self.surrogate_batch_cost = tf.where(
-                tf.equal(self.reparam_flags, self.FULLY_REPARAMETERIZED_FLAG),
-                self.costs,
-                self.costs + log_probs * self.q,
-                name='batch_cost')
+            if baseline_fn:
+                self.surrogate_batch_cost = tf.where(
+                    tf.equal(self.reparam_flags, self.FULLY_REPARAMETERIZED_FLAG),
+                    self.costs,
+                    self.costs + log_probs * (self.q - self._baseline),
+                    name='batch_cost')
+            else:
+                self.surrogate_batch_cost = tf.where(
+                    tf.equal(self.reparam_flags, self.FULLY_REPARAMETERIZED_FLAG),
+                    self.costs,
+                    self.costs + log_probs * self.q,
+                    name='batch_cost')
 
             # self.total_surrogate_reward = tf.reduce_sum(tf.squeeze(self.reparam_rewards), axis=1, name='total_surrogate_reward')
 

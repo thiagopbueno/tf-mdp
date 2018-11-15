@@ -15,8 +15,8 @@
 
 
 from tfmdp.train.policy import DeepReactivePolicy
+from tfmdp.train.valuefn import Value
 from tfmdp.train.mrm import MarkovRecurrentModel, ReparameterizationType
-from tfmdp.train.simulator import PolicySimulationModel
 from tfmdp.train.optimizer import PolicyOptimizer
 
 import tensorflow as tf
@@ -71,12 +71,20 @@ class PolicyOptimizationPlanner(object):
             loss='linear',
             kernel_l1_regularizer=None, kernel_l2_regularizer=None,
             bias_l1_regularizer=None, bias_l2_regularizer=None,
-            reparameterization_type=None):
+            reparameterization_type=None,
+            baseline_flag=False):
+
+        self._baseline_flag = baseline_flag
+        self._valuefn = None
+        if baseline_flag:
+            self._valuefn = Value(self._compiler, self._policy)
+            self._valuefn.build(horizon, 128)
 
         self._model = MarkovRecurrentModel(self._compiler, self._policy, batch_size)
         if reparameterization_type is None:
             reparameterization_type = ReparameterizationType.FULLY_REPARAMETERIZED
-        self._model.build(horizon, self._loss_fn[loss], reparameterization_type)
+
+        self._model.build(horizon, self._loss_fn[loss], reparameterization_type, self._valuefn)
 
         self._optimizer = PolicyOptimizer(self._model, self._logdir, debug=False)
         self._optimizer.build(
@@ -86,7 +94,7 @@ class PolicyOptimizationPlanner(object):
             self._get_regularizer(bias_l1_regularizer, bias_l2_regularizer))
 
     def run(self, epochs, show_progress=True):
-        losses, rewards = self._optimizer.run(epochs, show_progress=show_progress)
+        losses, rewards = self._optimizer.run(epochs, show_progress=show_progress, baseline_flag=self._baseline_flag)
         logdir = self._optimizer._train_writer.get_logdir()
         return rewards, self._policy, logdir
 

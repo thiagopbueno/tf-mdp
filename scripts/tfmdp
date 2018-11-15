@@ -83,6 +83,11 @@ def parse_args():
         help='n-step hybrid estimator'
     )
     parser.add_argument(
+        '-bl', '--baseline',
+        action='store_true',
+        help='baseline flag'
+    )
+    parser.add_argument(
         '-b', '--batch-size',
         type=int, default=256,
         help='number of trajectories in a batch (default=256)'
@@ -152,6 +157,8 @@ def print_parameters(args):
         print('estimator = {}'.format(args.estimator))
         if args.n_step:
             print('n-step = {}'.format(args.n_step))
+        if args.estimator in ['sf', 'hybrid']:
+            print('baseline = {}'.format(args.baseline))
         print('optimizer     = {}'.format(args.optimizer))
         print('loss function = {}'.format(args.loss_fn))
         print('kernel l1-regularization = {}'.format(args.kernel_l1_regularizer))
@@ -187,7 +194,8 @@ def solve(compiler, args):
         args.loss_fn,
         args.kernel_l1_regularizer, args.kernel_l2_regularizer,
         args.bias_l1_regularizer, args.bias_l2_regularizer,
-        reparam_type)
+        reparam_type,
+        args.baseline)
     rewards, policy, logdir = planner.run(args.epochs)
     return rewards, policy, logdir
 

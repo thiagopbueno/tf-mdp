@@ -59,7 +59,7 @@ class PolicyOptimizer(object):
                 self._build_summary_graph()
                 self._build_debug_graph()
 
-    def run(self, epochs: int, show_progress: bool = True) -> None:
+    def run(self, epochs: int, show_progress: bool = True, baseline_flag=False) -> None:
 
         with tf.Session(graph=self.graph) as sess:
 
@@ -77,10 +77,23 @@ class PolicyOptimizer(object):
 
             sess.run(self._init_op)
 
-            for step in range(epochs):
-                _, loss_, reward_ = sess.run([self._train_op, self.loss, self.avg_total_reward])
+            feed_dict = {}
+            if baseline_flag:
+                baseline = self._model._baseline_fn
+                feed_dict = {
+                    baseline._training: False
+                }
 
-                summary_ = sess.run(self._merged)
+            for step in range(epochs):
+
+                if baseline_flag and step % 5 == 0:
+                    print('Fitting baseline function ...')
+                    baseline.fit(sess, 64, 50, show_progress=True)
+                    print()
+
+                _, loss_, reward_ = sess.run([self._train_op, self.loss, self.avg_total_reward], feed_dict=feed_dict)
+
+                summary_ = sess.run(self._merged, feed_dict=feed_dict)
                 self._train_writer.add_summary(summary_, step)
 
                 if reward_ > reward:
@@ -92,7 +105,10 @@ class PolicyOptimizer(object):
                     self._model._policy.save(sess)
 
                 if show_progress:
-                    print('Epoch {0:5}: loss = {1:3.6f}\r'.format(step, loss_), end='')
+                    if baseline_flag:
+                        print('>> Epoch {0:5}: loss = {1:3.6f}'.format(step, loss_))
+                    else:
+                        print('Epoch {0:5}: loss = {1:3.6f}\r'.format(step, loss_), end='')
 
                 self._hooks_run(sess, step)
 

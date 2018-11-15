@@ -154,6 +154,6 @@ class TestValueFn(unittest.TestCase):
 
             epochs = 20
             batch_size = 64
-            loss = self.valuefn1.fit(sess, batch_size, epochs, show_progress=True)
+            loss = self.valuefn1.fit(sess, batch_size, epochs, show_progress=False)
             self.assertIsInstance(loss, list)
 
