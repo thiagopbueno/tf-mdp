@@ -16,8 +16,6 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
-import tfmdp
-
 
 # -- Project information -----------------------------------------------------
 
@@ -26,9 +24,9 @@ copyright = '2019, Thiago P. Bueno'
 author = 'Thiago P. Bueno'
 
 # The short X.Y version
-version = tfmdp.__version__
+version = 'v0.4.4'
 # The full version, including alpha/beta/rc tags
-release = tfmdp.__release__
+release = 'v0.4.4-alpha'
 
 
 # -- General configuration ---------------------------------------------------
