@@ -1,4 +1,4 @@
-# tf-mdp [![Build Status][travis.svg]][travis] [![License][license.svg]][license]
+# tf-mdp [![Build Status][travis.svg]][travis] [![Documentation Status][readthedocs]][readthedocs-badge] [![License][license.svg]][license]
 
 Probabilistic planning in continuous state-action MDPs using TensorFlow.
 
@@ -247,13 +247,14 @@ General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License
 along with tf-mdp. If not, see http://www.gnu.org/licenses/.
 
-
 [license.svg]: https://img.shields.io/aur/license/yaourt.svg
 [license]: https://github.com/thiagopbueno/tf-mdp/blob/master/LICENSE
 [pyrddl]: https://github.com/thiagopbueno/pyrddl
 [rddl2tf]: https://github.com/thiagopbueno/rddl2tf
 [rddl]: http://users.cecs.anu.edu.au/~ssanner/IPPC_2011/RDDL.pdf
 [rddlgym]: https://github.com/thiagopbueno/rddlgym
+[readthedocs-badge]: https://tf-mdp.readthedocs.io/en/latest/?badge=latest
+[readthedocs]: https://readthedocs.org/projects/tf-mdp/badge/?version=latest
 [readthedocs]: https://tf-mdp.readthedocs.io/
 [tf-rddlsim]: https://github.com/thiagopbueno/tf-rddlsim
 [travis.svg]: https://travis-ci.org/thiagopbueno/tf-mdp.svg?branch=master
