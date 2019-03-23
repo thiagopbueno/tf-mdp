@@ -226,6 +226,11 @@ total reward = -79.6495, reward per timestep = -3.9825
 tensorboard --logdir /tmp/tfmdp/train
 ```
 
+# Documentation
+
+Please refer to [https://tf-mdp.readthedocs.io/][readthedocs] for the code documentation.
+
+
 # Support
 
 If you are having issues with tf-mdp, please let me know at: [thiago.pbueno@gmail.com](mailto://thiago.pbueno@gmail.com).
@@ -255,7 +260,6 @@ along with tf-mdp. If not, see http://www.gnu.org/licenses/.
 [rddlgym]: https://github.com/thiagopbueno/rddlgym
 [readthedocs-badge]: https://tf-mdp.readthedocs.io/en/latest/?badge=latest
 [readthedocs]: https://readthedocs.org/projects/tf-mdp/badge/?version=latest
-[readthedocs]: https://tf-mdp.readthedocs.io/
 [tf-rddlsim]: https://github.com/thiagopbueno/tf-rddlsim
 [travis.svg]: https://travis-ci.org/thiagopbueno/tf-mdp.svg?branch=master
 [travis]: https://travis-ci.org/thiagopbueno/tf-mdp
