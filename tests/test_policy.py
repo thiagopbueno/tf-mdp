@@ -15,6 +15,8 @@
 
 import rddlgym
 
+import rddl2tf
+
 from tfmdp.train.policy import DeepReactivePolicy
 
 import numpy as np
@@ -68,8 +70,8 @@ class TestDeepReactivePolicy(unittest.TestCase):
         self.assertListEqual(self.policy.input_layer.shape.as_list(), shape)
 
         with self.compiler.graph.as_default():
-            state_fluents = self.compiler.state_fluent_ordering
-            state_size = self.compiler.state_size
+            state_fluents = self.compiler.rddl.domain.state_fluent_ordering
+            state_size = self.compiler.rddl.state_size
             for name, shape in zip(state_fluents, state_size):
                 name = name.replace('/', '-')
 
@@ -104,8 +106,8 @@ class TestDeepReactivePolicy(unittest.TestCase):
                 self.assertEqual(vars[0].shape[0], units)
 
     def test_output_layer(self):
-        action_fluents = self.compiler.action_fluent_ordering
-        action_size = self.compiler.action_size
+        action_fluents = self.compiler.rddl.domain.action_fluent_ordering
+        action_size = self.compiler.rddl.action_size
         self.assertIsInstance(self.policy.output_layer, tuple)
         self.assertEqual(len(self.policy.output_layer), len(action_fluents))
 
@@ -131,12 +133,12 @@ class TestDeepReactivePolicy(unittest.TestCase):
                 self.assertEqual(len(vars), 1)
 
     def test_action_outputs(self):
-        action_fluents = self.compiler.action_fluent_ordering
-        action_size = self.compiler.action_size
-        action_dtype = self.compiler.action_dtype
+        action_fluents = self.compiler.rddl.domain.action_fluent_ordering
+        action_size = self.compiler.rddl.action_size
+        action_range_type = self.compiler.rddl.action_range_type
         self.assertIsInstance(self.policy.action_outputs, tuple)
         self.assertEqual(len(self.policy.action_outputs), len(action_fluents))
-        for name, shape, dtype, tensor in zip(action_fluents, action_size, action_dtype, self.policy.action_outputs):
+        for name, shape, range_type, tensor in zip(action_fluents, action_size, action_range_type, self.policy.action_outputs):
             self.assertIsInstance(tensor, tf.Tensor)
-            self.assertEqual(tensor.dtype, dtype)
+            self.assertEqual(tensor.dtype, rddl2tf.utils.range_type_to_dtype(range_type))
             self.assertListEqual(tensor.shape.as_list(), [self.batch_size] + list(shape))

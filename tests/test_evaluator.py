@@ -43,8 +43,8 @@ class TestPolicyEvaluator(unittest.TestCase):
 
         # fluents
         cls.initial_state = cls.compiler.compile_initial_state(cls.batch_size)
-        cls.state_fluents = cls.compiler.state_fluent_ordering
-        cls.action_fluents = cls.compiler.action_fluent_ordering
+        cls.state_fluents = cls.compiler.rddl.domain.state_fluent_ordering
+        cls.action_fluents = cls.compiler.rddl.domain.action_fluent_ordering
 
         # policy
         cls.layers = [64, 32, 16]

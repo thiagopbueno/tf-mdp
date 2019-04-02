@@ -24,8 +24,8 @@ setup(
     packages=find_packages(),
     scripts=['scripts/tfmdp'],
     install_requires=[
-        'rddlgym',
-        'tfrddlsim',
+        'rddlgym>=0.5.8',
+        'tfrddlsim>=0.7.0',
         'tensorflow',
         'tensorflow-tensorboard',
         'typing'

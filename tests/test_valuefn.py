@@ -42,7 +42,7 @@ class TestValueFn(unittest.TestCase):
         self.valuefn1.build(horizon, batch_size)
 
         states = self.valuefn1._states
-        state_size = self.compiler1.state_size
+        state_size = self.compiler1.rddl.state_size
         self.assertIsInstance(states, tuple)
         self.assertEqual(len(states), len(state_size))
         for fluent, size in zip(states, state_size):
@@ -75,7 +75,7 @@ class TestValueFn(unittest.TestCase):
         self.assertIsInstance(timesteps, tf.Tensor)
         self.assertListEqual(timesteps.shape.as_list(), [batch_size * horizon])
 
-        state_size = self.compiler1.state_size
+        state_size = self.compiler1.rddl.state_size
         self.assertIsInstance(states, tuple)
         self.assertEqual(len(states), len(state_size))
         for fluent, size in zip(states, state_size):
@@ -123,7 +123,7 @@ class TestValueFn(unittest.TestCase):
             dataset = self.valuefn1._regression_dataset(sess)
             batchs = self.valuefn1._training_batch_generator(training_batch, dataset)
 
-            state_size = self.compiler1.state_size
+            state_size = self.compiler1.rddl.state_size
 
             n = 0
             for state, timestep, target in batchs:

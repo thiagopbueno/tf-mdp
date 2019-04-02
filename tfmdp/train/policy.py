@@ -95,7 +95,7 @@ class DeepReactivePolicy(Policy):
     def _input_layer(self):
         with tf.variable_scope('input'):
             layers = []
-            state_fluents = self._compiler.state_fluent_ordering
+            state_fluents = self._compiler.rddl.domain.state_fluent_ordering
             for fluent_name, fluent_input in zip(state_fluents, self.state_inputs):
                 layer = fluent_input
                 if self.input_layer_norm:
@@ -119,8 +119,8 @@ class DeepReactivePolicy(Policy):
         self.hidden = tuple(self.hidden)
 
     def _output_layer(self):
-        action_fluents = self._compiler.action_fluent_ordering
-        action_size = self._compiler.action_size
+        action_fluents = self._compiler.rddl.domain.action_fluent_ordering
+        action_size = self._compiler.rddl.action_size
         inputs = self.hidden[-1]
         self.output_layer = []
         for fluent_name, fluent_size in zip(action_fluents, action_size):
@@ -133,8 +133,8 @@ class DeepReactivePolicy(Policy):
 
     def _action_outputs(self, state):
         bounds = self._compiler.compile_action_bound_constraints(state)
-        action_fluents = self._compiler.action_fluent_ordering
-        action_size = self._compiler.action_size
+        action_fluents = self._compiler.rddl.domain.action_fluent_ordering
+        action_size = self._compiler.rddl.action_size
         layers = self.output_layer
         self.action_outputs = []
         for fluent_name, fluent_size, layer in zip(action_fluents, action_size, layers):

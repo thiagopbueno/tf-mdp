@@ -54,17 +54,17 @@ class MarkovCell(tf.nn.rnn_cell.RNNCell):
     @property
     def state_size(self) -> Sequence[Shape]:
         '''Returns the MDP state size.'''
-        return self._sizes(self._compiler.state_size)
+        return self._sizes(self._compiler.rddl.state_size)
 
     @property
     def action_size(self) -> Sequence[Shape]:
         '''Returns the MDP action size.'''
-        return self._sizes(self._compiler.action_size)
+        return self._sizes(self._compiler.rddl.action_size)
 
     @property
     def interm_size(self) -> Sequence[Shape]:
         '''Returns the MDP intermediate state size.'''
-        return self._sizes(self._compiler.interm_size)
+        return self._sizes(self._compiler.rddl.interm_size)
 
     @property
     def output_size(self) -> Tuple[Sequence[Shape], Sequence[Shape], Sequence[Shape], int, int]:

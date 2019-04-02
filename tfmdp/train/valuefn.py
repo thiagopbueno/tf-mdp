@@ -92,8 +92,8 @@ class Value():
         self._saver.restore(sess, save_path)
 
     def __call__(self, state, timestep):
-        state_fluents = self._compiler.state_fluent_ordering
-        state_size = self._compiler.state_size
+        state_fluents = self._compiler.rddl.domain.state_fluent_ordering
+        state_size = self._compiler.rddl.state_size
 
         with self.graph.as_default():
 
@@ -143,8 +143,8 @@ class Value():
         self._dataset_targets = tf.squeeze(tf.concat(tf.unstack(self._estimates, axis=1), axis=0))
 
     def _build_prediction_ops(self, horizon):
-        state_fluents = self._compiler.state_fluent_ordering
-        state_size = self._compiler.state_size
+        state_fluents = self._compiler.rddl.domain.state_fluent_ordering
+        state_size = self._compiler.rddl.state_size
 
         with tf.name_scope('prediction'):
             self._inputs = []
