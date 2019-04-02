@@ -1,6 +1,8 @@
 import sys
 import json
 import numpy as np
+
+import matplotlib
 import matplotlib.pyplot as plt
 
 
@@ -100,11 +102,15 @@ if __name__ == '__main__':
 
     epochs = 200
 
-    f = plt.figure()
+    f = plt.figure(figsize=(7, 3))
 
     # use LaTeX fonts in the plot
-    # plt.rc('text', usetex=True)
-    plt.rc('font', family='sans-serif')
+    plt.rc('text', usetex=True)
+    plt.rc('font', family='serif')
+    # matplotlib.rcParams['pdf.fonttype'] = 42
+    # matplotlib.rcParams['ps.useafm'] = True
+    # matplotlib.rcParams['pdf.use14corefonts'] = True
+    # matplotlib.rcParams['text.usetex'] = True
 
     plot_results(results, epochs)
 
