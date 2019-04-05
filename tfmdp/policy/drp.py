@@ -22,50 +22,46 @@ import tensorflow as tf
 from typing import Dict, Optional, Sequence
 
 
+activation_fn = {
+    'none': None,
+    'sigmoid': tf.sigmoid,
+    'tanh': tf.tanh,
+    'relu': tf.nn.relu,
+    'relu6': tf.nn.relu6,
+    'crelu': tf.nn.crelu,
+    'elu': tf.nn.elu,
+    'selu': tf.nn.selu,
+    'softplus': tf.nn.softplus,
+    'softsign': tf.nn.softsign
+}
+
+
 class DeepReactivePolicy(metaclass=abc.ABCMeta):
-	''' DeepReactivePolicy abstract base class.
+    ''' DeepReactivePolicy abstract base class.
 
-	It defines the basic API for building, saving and restoring
-	reactive policies implemented as deep neural nets.
+    It defines the basic API for building, saving and restoring
+    reactive policies implemented as deep neural nets.
 
-	A reactive policy defines a mapping from current state fluents
-	to action fluents.
+    A reactive policy defines a mapping from current state fluents
+    to action fluents.
 
-	Args:
-		compiler (:obj:`rddl2tf.compiler.Compiler`): RDDL2TensorFlow compiler.
-		config (Dict): The reactive policy configuration parameters.
-	'''
+    Args:
+        compiler (:obj:`rddl2tf.compiler.Compiler`): RDDL2TensorFlow compiler.
+        config (Dict): The reactive policy configuration parameters.
+    '''
 
-	def __init__(self, compiler: rddl2tf.compiler.Compiler, config: Dict) -> None:
-		self.compiler = compiler
-		self.config = config
+    def __init__(self, compiler: rddl2tf.compiler.Compiler, config: Dict) -> None:
+        self.compiler = compiler
+        self.config = config
 
-	@abc.abstractmethod
-	def build(self) -> None:
-		'''Create the DRP layers and trainable weights.'''
-		raise NotImplementedError
-
-	@abc.abstractmethod
-    def __call__(self, state: Sequence[tf.Tensor],
-                       timestep: tf.Tensor) -> Sequence[tf.Tensor]:
-        '''Returns action fluents for the current `state` and `timestep`.
-
-        Args:
-            state (Sequence[tf.Tensor]): A tuple of state fluents.
-            timestep (tf.Tensor): The current timestep.
-
-        Returns:
-            Sequence[tf.Tensor]: A tuple of action fluents.
-        '''
+    @abc.abstractproperty
+    def name(self) -> str:
+        '''Returns the canonical DRP name.'''
         raise NotImplementedError
 
     @property
-    def name(self) -> str:
-        '''Returns the canonical DRP name by concatenating its configuration parameters.'''
-        params = sorted(self.config)
-        params_string = ['{}={}'.format(p, str(self.config[p])) for p in params]
-        params_string = '&'.join(params_string)
-        return 'drp-{}'.format(params_string)
+    def graph(self):
+        return self.compiler.graph
 
     @abc.abstractproperty
     def size(self) -> int:
@@ -77,35 +73,36 @@ class DeepReactivePolicy(metaclass=abc.ABCMeta):
         '''Returns a list of the trainable variables.'''
         raise NotImplementedError
 
-    def to_json(self) -> str:
-        '''Returns the policy configuration parameters serialized in JSON format.'''
-        return json.dumps(self.config, sort_keys=True, indent=4)
+    @abc.abstractmethod
+    def build(self) -> None:
+        '''Create the DRP layers and trainable weights.'''
+        raise NotImplementedError
 
-    @classmethod
-    def from_json(cls, compiler: rddl2tf.compiler.Compiler,
-                       json_config: str) -> 'DeepReactivePolicy':
-        '''Instantiates a DRP from a `json_config` string.
+    @abc.abstractmethod
+    def __call__(self,
+                 state: Sequence[tf.Tensor],
+                 timestep: tf.Tensor) -> Sequence[tf.Tensor]:
+        '''Returns action fluents for the current `state` and `timestep`.
 
         Args:
-            compiler (:obj:`rddl2tf.compiler.Compiler`): RDDL2TensorFlow compiler.
-            json_config (str): A DRP configuration encoded in JSON format.
+            state (Sequence[tf.Tensor]): A tuple of state fluents.
+            timestep (tf.Tensor): The current timestep.
 
         Returns:
-            :obj:`tfmdp.policy.drp.DeepReactivePolicy`: A DRP object.
+            Sequence[tf.Tensor]: A tuple of action fluents.
         '''
-        config = json.loads(json_string)
-        return cls(compiler, config)
+        raise NotImplementedError
 
-	def save(self, sess: tf.Session, path: str) -> str:
-		'''Serializes all DRP trainable variables into a checkpoint file.
+    def save(self, sess: tf.Session, path: str) -> str:
+        '''Serializes all DRP trainable variables into a checkpoint file.
 
-		Args:
-			sess (:obj:`tf.Session`): A running session.
-			path (str): The path to a checkpoint directory.
+        Args:
+            sess (:obj:`tf.Session`): A running session.
+            path (str): The path to a checkpoint directory.
 
-		Returns:
-			str: The path prefix of the newly created checkpoint file.
-		'''
+        Returns:
+            str: The path prefix of the newly created checkpoint file.
+        '''
         if self._saver is None:
             self._saver = tf.train.Saver()
         self._checkpoint = self._saver.save(sess, path)
@@ -126,7 +123,26 @@ class DeepReactivePolicy(metaclass=abc.ABCMeta):
             path = self._checkpoint
         self._saver.restore(sess, path)
 
-    @abc.abstractmethod
+    def to_json(self) -> str:
+        '''Returns the policy configuration parameters serialized in JSON format.'''
+        return json.dumps(self.config, sort_keys=True, indent=4)
+
+    @classmethod
+    def from_json(cls, compiler: rddl2tf.compiler.Compiler,
+                       json_config: str) -> 'DeepReactivePolicy':
+        '''Instantiates a DRP from a `json_config` string.
+
+        Args:
+            compiler (:obj:`rddl2tf.compiler.Compiler`): RDDL2TensorFlow compiler.
+            json_config (str): A DRP configuration encoded in JSON format.
+
+        Returns:
+            :obj:`tfmdp.policy.drp.DeepReactivePolicy`: A DRP object.
+        '''
+        config = json.loads(json_string)
+        return cls(compiler, config)
+
     def summary(self) -> None:
         '''Prints a string summary of the DRP.'''
-        raise NotImplementedError
+        print(self.__class__)
+        print(self.to_json())
