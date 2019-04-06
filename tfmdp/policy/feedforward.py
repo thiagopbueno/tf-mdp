@@ -13,8 +13,13 @@
 # You should have received a copy of the GNU General Public License
 # along with tf-mdp. If not, see <http://www.gnu.org/licenses/>.
 
+
+import rddl2tf
+
 from tfmdp import utils
 from tfmdp.policy.drp import DeepReactivePolicy, activation_fn
+from tfmdp.policy.layers.state_layer import StateLayer
+from tfmdp.policy.layers.action_layer import ActionLayer
 
 import numpy as np
 import tensorflow as tf
@@ -22,8 +27,20 @@ from typing import Dict, Optional, Sequence
 
 
 class FeedforwardPolicy(DeepReactivePolicy):
+    '''FeedforwardPolicy implements a DRP as a multi-layer perceptron.
 
-    def __init__(self, compiler, config):
+    It is parameterized by the following configuration params:
+        - config['layers']: a list of number of units; and
+        - config['activation']: an activation function.
+
+    Args:
+        compiler (:obj:`rddl2tf.compiler.Compiler`): RDDL2TensorFlow compiler.
+        config (Dict): The policy configuration parameters.
+    '''
+
+    def __init__(self,
+                 compiler: rddl2tf.compiler.Compiler,
+                 config: dict) -> None:
         super(FeedforwardPolicy, self).__init__(compiler, config)
 
     @property
@@ -46,8 +63,7 @@ class FeedforwardPolicy(DeepReactivePolicy):
         policy_vars += self._input_layer.trainable_variables
         for layer in self._hidden_layers:
             policy_vars += layer.trainable_variables
-        for layer in self._output_layers:
-            policy_vars += layer.trainable_variables
+        policy_vars += self._output_layer.trainable_variables
         return policy_vars
 
     def build(self) -> None:
@@ -55,19 +71,21 @@ class FeedforwardPolicy(DeepReactivePolicy):
         with self.graph.as_default():
             self._build_input_layer()
             self._build_hidden_layers()
-            self._build_output_layers()
+            self._build_output_layer()
 
     def _build_input_layer(self) -> None:
-        self._input_layer = tf.layers.Flatten()
+        '''Builds the DRP input layer using a `tfmdp.policy.layers.state_layer.StateLayer`.'''
+        self._input_layer = StateLayer()
 
     def _build_hidden_layers(self) -> None:
+        '''Builds all hidden layers as `tf.layers.Dense` layers.'''
         activation = activation_fn[self.config['activation']]
         self._hidden_layers = tuple(tf.layers.Dense(units, activation=activation)
                                     for units in self.config['layers'])
 
-    def _build_output_layers(self) -> None:
-        self._output_layers = tuple(tf.layers.Dense(np.prod(size))
-                                    for size in self.compiler.rddl.action_size)
+    def _build_output_layer(self) -> None:
+        '''Builds the DRP output layer using a `tfmdp.policy.layers.action_layer.ActionLayer`.'''
+        self._output_layer = ActionLayer(self.compiler.rddl.action_size)
 
     def __call__(self,
                  state: Sequence[tf.Tensor],
@@ -85,50 +103,15 @@ class FeedforwardPolicy(DeepReactivePolicy):
             with tf.variable_scope('policy', reuse=tf.AUTO_REUSE):
 
                 # input layer
-                state_layers = list(map(self._input_layer, state))
-                input_layer = tf.concat(state_layers, axis=1)
+                input_layer = self._input_layer(state)
 
                 # hidden layers
                 h = input_layer
                 for layer in self._hidden_layers:
                     h = layer(h)
 
-                # output layers
-                output_layers = tuple(layer(h) for layer in self._output_layers)
-
-                # action
-                return self._action_outputs(state, output_layers)
-
-    def _action_outputs(self, state, output_layers):
-        batch_size = int(state[0].shape[0])
-
-        bounds = self.compiler.compile_action_bound_constraints(state)
-
-        action_fluents = self.compiler.rddl.domain.action_fluent_ordering
-        action_size = self.compiler.rddl.action_size
-
-        action = []
-        for fluent_name, fluent_size, layer in zip(action_fluents, action_size, output_layers):
-            action_tensor = tf.reshape(layer, [batch_size] + list(fluent_size))
-            action_tensor = self._get_output_tensor(action_tensor, bounds[fluent_name])
-            action.append(action_tensor)
-
-        return tuple(action)
-
-    def _get_output_tensor(self, tensor, bounds):
-        lower, upper = bounds
-        if lower is not None:
-            lower = lower.cast(tf.float32)
-            lower = tf.stop_gradient(lower.tensor)
-        if upper is not None:
-            upper = upper.cast(tf.float32)
-            upper = tf.stop_gradient(upper.tensor)
-
-        if lower is not None and upper is not None:
-            tensor = lower + (upper - lower) * tf.sigmoid(tensor)
-        elif lower is not None and upper is None:
-            tensor = lower + tf.exp(tensor)
-        elif lower is None and upper is not None:
-            tensor = upper - tf.exp(tensor)
-
-        return tensor
+                # output layer
+                action_fluents = self.compiler.rddl.domain.action_fluent_ordering
+                action_bounds = self.compiler.compile_action_bound_constraints(state)
+                action_bounds = [action_bounds[fluent_name] for fluent_name in action_fluents]
+                return self._output_layer(h, action_bounds=action_bounds)

@@ -16,6 +16,8 @@
 import rddlgym
 
 from tfmdp import utils
+from tfmdp.policy.layers.state_layer import StateLayer
+from tfmdp.policy.layers.action_layer import ActionLayer
 from tfmdp.policy.drp import activation_fn
 from tfmdp.policy.feedforward import FeedforwardPolicy
 
@@ -63,7 +65,7 @@ class TestFeedforwardPolicy(unittest.TestCase):
         self.assertEqual(self.policy.size, sum(np.prod(var.shape.as_list()) for var in self.policy.vars))
 
     def test_build_input_layer(self):
-        self.assertIsInstance(self.policy._input_layer, tf.layers.Flatten)
+        self.assertIsInstance(self.policy._input_layer, StateLayer)
 
     def test_build_hidden_layers(self):
         self.assertIsInstance(self.policy._hidden_layers, tuple)
@@ -73,14 +75,8 @@ class TestFeedforwardPolicy(unittest.TestCase):
             self.assertEqual(layer.units, units)
             self.assertEqual(layer.activation, activation_fn[self.config['activation']])
 
-    def test_build_output_layers(self):
-        self.assertIsInstance(self.policy._output_layers, tuple)
-        self.assertEqual(len(self.policy._output_layers), len(self.default_action))
-        for layer, action_size in zip(self.policy._output_layers, self.compiler.rddl.action_size):
-            units = np.prod(action_size)
-            self.assertIsInstance(layer, tf.layers.Dense)
-            self.assertEqual(layer.units, units)
-            self.assertEqual(layer.activation, None)
+    def test_build_output_layer(self):
+        self.assertIsInstance(self.policy._output_layer, ActionLayer)
 
     def test_call(self):
         action1 = self.policy(self.initial_state, self.horizon)
