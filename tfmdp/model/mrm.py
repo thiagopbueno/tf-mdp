@@ -19,12 +19,17 @@ import rddl2tf.compiler
 from tfmdp.policy.drp import DeepReactivePolicy
 
 import abc
+import collections
 import tensorflow as tf
-from typing import Dict
+
+from typing import Dict, Sequence, Tuple
+
+
+Trajectory = collections.namedtuple('Trajectory', 'states actions interms rewards')
 
 
 class MarkovRecurrentModel(metaclass=abc.ABCMeta):
-    '''MarkovRecurrentMode abstract base class.
+    '''MarkovRecurrentModel abstract base class.
 
     Args:
         compiler (:obj:`rddl2tf.compiler.Compiler`): RDDL2TensorFlow compiler.
@@ -37,12 +42,39 @@ class MarkovRecurrentModel(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def build(self, policy: DeepReactivePolicy) -> None:
-        '''Builds the recurrent model ops by integrating the `policy` in the trajectory sampling.
+        '''Builds the recurrent cell ops by embedding the `policy` in the transition sampling.
 
         Args:
             policy (:obj:`tfmdp.policy.drp.DeepReactivePolicy`): A deep reactive policy.
         '''
         raise NotImplementedError
+
+    @abc.abstractmethod
+    def __call__(self,
+                 initial_state: Sequence[tf.Tensor],
+                 horizon: int) -> Tuple[Trajectory, Sequence[tf.Tensor], tf.Tensor]:
+        '''Samples a batch state-action-reward trajectory with given
+        `initial_state` and `horizon`, and returns the corresponding total reward.
+
+        Args:
+            initial_state (Sequence[tf.Tensor]): The initial state tensors.
+            horizon (int): The number of timesteps in each sampled trajectory.
+
+        Returns:
+            Tuple[Trajectory, Sequence[tf.Tensor], tf.Tensor]: A triple of (namedtuple, tensors, tensor)
+            representing the trajectory, final state, and total reward.
+        '''
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def summary(self) -> None:
+        '''Prints a string summary of the recurrent model.'''
+        raise NotImplementedError
+
+    @property
+    def graph(self) -> tf.Graph:
+        '''Returns the model's computation graph.'''
+        return self.compiler.graph
 
     def to_json(self) -> str:
         '''Returns the model configuration parameters serialized in JSON format.'''
