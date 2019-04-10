@@ -95,7 +95,11 @@ class MarkovRecurrentModel(metaclass=abc.ABCMeta):
         config = json.loads(json_string)
         return cls(compiler, config)
 
-    @abc.abstractmethod
-    def summary(self) -> None:
-        '''Prints a string summary of the recurrent model.'''
-        raise NotImplementedError
+    def timesteps(self, horizon: int, batch_size: int) -> tf.Tensor:
+        with self.graph.as_default():
+            with tf.name_scope('timesteps'):
+                start, limit, delta = horizon - 1, -1, -1
+                timesteps_range = tf.range(start, limit, delta, dtype=tf.float32)
+                timesteps_range = tf.expand_dims(timesteps_range, -1)
+                batch_timesteps = tf.stack([timesteps_range] * batch_size)
+                return batch_timesteps
