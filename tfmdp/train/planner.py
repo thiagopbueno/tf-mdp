@@ -71,7 +71,7 @@ class PolicyOptimizationPlanner(metaclass=abc.ABCMeta):
 
     def to_json(self) -> str:
         '''Returns the planner configuration parameters serialized in JSON format.'''
-        pass
+        return json.dumps(self.config, sort_keys=True, indent=4)
 
     @classmethod
     def from_json(cls, compiler: rddl2tf.compiler.Compiler,
