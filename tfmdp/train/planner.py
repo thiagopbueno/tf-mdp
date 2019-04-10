@@ -17,17 +17,18 @@
 import rddl2tf.compiler
 
 from tfmdp.policy.drp import DeepReactivePolicy
-from tfmdp.model.mrm import MarkovRecurrentModel
-from tfmdp.train.losses import PolicyLoss
-from tfmdp.train.optimizers import Optimizer
-from tfmdp.train.callbacks import Callback
+
+import tfmdp.train.losses
+import tfmdp.train.optimizers
+# from tfmdp.train.callbacks import Callback
 
 import abc
 import tensorflow as tf
 
 from typing import Callable, Dict, List, Optional, Sequence
+
+Callback = Callable[[None],None]
 Callbacks = Dict[str, Sequence[Callback]]
-Callback = Callable[[],]
 
 
 class PolicyOptimizationPlanner(metaclass=abc.ABCMeta):
@@ -44,16 +45,14 @@ class PolicyOptimizationPlanner(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def build(self, policy: DeepReactivePolicy,
-                    model: MarkovRecurrentModel,
-                    loss: PolicyLoss,
-                    optimizer: Optimizer) -> None:
+                    loss: str,
+                    optimizer: str) -> None:
         '''Builds the planner by building and integrating each policy optimization component.
 
         Args:
             policy (:obj:`tfmdp.policy.drp.DeepReactivePolicy`): A deep reactive policy.
-            model (:obj:`tfmdp.train.mrm.MarkovRecurrentModel`): A generative model based on a RNN.
-            loss (:obj:`tfmdp.train.losses.PolicyLoss`): A differentiable loss function used to train the policy.
-            optimizer (:obj:`tfmdp.train.optimizers.Optimizer`): A gradient descent optimizer.
+            loss (str): A differentiable loss function used to train the policy.
+            optimizer (str): A gradient descent optimizer.
         '''
         raise NotImplementedError
 
