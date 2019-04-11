@@ -39,7 +39,7 @@ class TestPathwiseOptimizationPlanner(unittest.TestCase):
         cls.compiler.batch_mode_on()
 
         # policy
-        cls.policy = FeedforwardPolicy(cls.compiler, {'layers': [512], 'activation': 'elu'})
+        cls.policy = FeedforwardPolicy(cls.compiler, {'layers': [256], 'activation': 'elu', 'input_layer_norm': True})
         cls.policy.build()
 
         # planner

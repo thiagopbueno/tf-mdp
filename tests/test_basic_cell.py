@@ -42,7 +42,7 @@ class TestBasicMarkovCell(unittest.TestCase):
         cls.default_action = cls.compiler.compile_default_action(cls.batch_size)
 
         # policy
-        cls.policy = FeedforwardPolicy(cls.compiler, {'layers': [64, 64], 'activation': 'relu'})
+        cls.policy = FeedforwardPolicy(cls.compiler, {'layers': [64, 64], 'activation': 'relu', 'input_layer_norm': True})
         cls.policy.build()
 
         # cell

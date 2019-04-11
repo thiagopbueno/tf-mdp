@@ -16,7 +16,7 @@
 
 import tensorflow as tf
 
-from typing import Sequence
+from typing import Dict, Optional, Sequence
 
 
 class StateLayer(tf.layers.Layer):
@@ -24,11 +24,22 @@ class StateLayer(tf.layers.Layer):
 
     It flattens each state fluent and returns a single
     concatenated tensor.
+
+    Args:
+        input_layer_norm (bool): The boolean flag for enabling layer normalization.
     '''
 
-    def __init__(self):
+    def __init__(self, input_layer_norm: bool = False) -> None:
         super(StateLayer, self).__init__(name='state_layer')
         self.flatten = tf.layers.Flatten()
+        self.input_layer_norm = input_layer_norm
+
+    @property
+    def trainable_variables(self) -> None:
+        '''Returns the list of all layer variables/weights.'''
+        variables = []
+        # TODO
+        return variables
 
     def call(self, inputs: Sequence[tf.Tensor]) -> tf.Tensor:
         '''Returns the concatenation of all state fluent tensors previously flatten.
@@ -39,5 +50,10 @@ class StateLayer(tf.layers.Layer):
         Returns:
             tf.Tensor: A single output tensor.
         '''
-        state_layers = list(map(self.flatten, inputs))
+        state_layers = []
+        for tensor in inputs:
+            layer = self.flatten(tensor)
+            if self.input_layer_norm:
+                layer = tf.contrib.layers.layer_norm(layer)
+            state_layers.append(layer)
         return tf.concat(state_layers, axis=1)

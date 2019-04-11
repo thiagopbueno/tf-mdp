@@ -44,7 +44,7 @@ class TestMonteCarloSampling(unittest.TestCase):
         cls.default_action = cls.compiler.compile_default_action(cls.batch_size)
 
         # policy
-        cls.policy = FeedforwardPolicy(cls.compiler, {'layers': [32, 32], 'activation': 'elu'})
+        cls.policy = FeedforwardPolicy(cls.compiler, {'layers': [32, 32], 'activation': 'elu', 'input_layer_norm': True})
         cls.policy.build()
 
         # model

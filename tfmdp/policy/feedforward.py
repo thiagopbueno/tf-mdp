@@ -58,24 +58,21 @@ class FeedforwardPolicy(DeepReactivePolicy):
 
     @property
     def vars(self) -> Sequence[tf.Variable]:
-        '''Returns a list of the trainable variables.'''
-        policy_vars = []
-        policy_vars += self._input_layer.trainable_variables
-        for layer in self._hidden_layers:
-            policy_vars += layer.trainable_variables
-        policy_vars += self._output_layer.trainable_variables
-        return policy_vars
+        with self.graph.as_default():
+            policy_vars = tf.trainable_variables(r'.*policy')
+            return policy_vars
 
     def build(self) -> None:
         '''Create the DRP layers and trainable weights.'''
         with self.graph.as_default():
-            self._build_input_layer()
-            self._build_hidden_layers()
-            self._build_output_layer()
+            with tf.variable_scope('policy'):
+                self._build_input_layer()
+                self._build_hidden_layers()
+                self._build_output_layer()
 
     def _build_input_layer(self) -> None:
         '''Builds the DRP input layer using a `tfmdp.policy.layers.state_layer.StateLayer`.'''
-        self._input_layer = StateLayer()
+        self._input_layer = StateLayer(self.config['input_layer_norm'])
 
     def _build_hidden_layers(self) -> None:
         '''Builds all hidden layers as `tf.layers.Dense` layers.'''

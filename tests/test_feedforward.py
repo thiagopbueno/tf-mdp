@@ -48,7 +48,8 @@ class TestFeedforwardPolicy(unittest.TestCase):
         # policy
         cls.config = {
             'layers': [128, 64, 32],
-            'activation': 'elu'
+            'activation': 'elu',
+            'input_layer_norm': True
         }
         cls.policy = FeedforwardPolicy(cls.compiler, cls.config)
         cls.policy.build()
@@ -59,7 +60,7 @@ class TestFeedforwardPolicy(unittest.TestCase):
 
     def test_vars(self):
         self.assertIsInstance(self.policy.vars, list)
-        self.assertEqual(len(self.policy.vars), 2 * (len(self.config['layers']) + len(self.default_action)))
+        self.assertEqual(len(self.policy.vars), 2 * (1 + len(self.config['layers']) + len(self.default_action)))
 
     def test_size(self):
         self.assertEqual(self.policy.size, sum(np.prod(var.shape.as_list()) for var in self.policy.vars))
