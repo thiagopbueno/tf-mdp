@@ -154,30 +154,29 @@ def load_model(args):
     return compiler
 
 
-def solve(compiler, args):
-    from tfmdp.train.mrm import ReparameterizationType
-    if args.estimator == 'pd':
-        reparam_type = ReparameterizationType.FULLY_REPARAMETERIZED
-    elif args.estimator == 'sf':
-        reparam_type = ReparameterizationType.NOT_REPARAMETERIZED
-    elif args.estimator == 'hybrid':
-        reparam_type = (ReparameterizationType.PARTIALLY_REPARAMETERIZED, args.n_step)
+def build_policy(compiler, args):
+    from tfmdp.policy.feedforward import FeedforwardPolicy
+    config = {
+        'layers': args.layers,
+        'activation': args.activation,
+        'input_layer_norm': args.input_layer_norm
+    }
+    policy = FeedforwardPolicy(compiler, config)
+    policy.build()
+    return policy
 
-    from tfmdp.planner import PolicyOptimizationPlanner
-    planner = PolicyOptimizationPlanner(
-        compiler,
-        args.layers, args.activation, args.input_layer_norm, args.hidden_layer_norm,
-        args.logdir)
-    planner.build(
-        args.learning_rate, args.batch_size, args.horizon,
-        args.optimizer,
-        args.loss_fn,
-        args.kernel_l1_regularizer, args.kernel_l2_regularizer,
-        args.bias_l1_regularizer, args.bias_l2_regularizer,
-        reparam_type,
-        args.baseline)
-    rewards, policy, logdir = planner.run(args.epochs)
-    return rewards, policy, logdir
+
+def solve(compiler, policy, args):
+    from tfmdp.planning.pdplanner import PathwiseOptimizationPlanner
+    config = {
+        'batch_size': args.batch_size,
+        'horizon': args.horizon,
+        'learning_rate': args.learning_rate
+    }
+    planner = PathwiseOptimizationPlanner(compiler, config)
+    planner.build(policy, loss=args.loss_fn, optimizer=args.optimizer)
+    _, rewards = planner.run(args.epochs)
+    return rewards
 
 
 def report_performance(rewards, horizon):
@@ -201,7 +200,8 @@ if __name__ == '__main__':
 
     print('>> Optimizing...')
     start = time.time()
-    rewards, policy, logdir = solve(compiler, args)
+    drp = build_policy(compiler, args)
+    rewards = solve(compiler, drp, args)
     end = time.time()
     uptime = end - start
     print()
@@ -210,4 +210,4 @@ if __name__ == '__main__':
 
     report_performance(rewards, args.horizon)
 
-    print('tensorboard --logdir {}\n'.format(logdir))
+    # print('tensorboard --logdir {}\n'.format(logdir))
