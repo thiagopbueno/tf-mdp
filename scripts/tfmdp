@@ -47,46 +47,31 @@ def parse_args():
         action='store_true',
         help='input layer normalization flag'
     )
-    parser.add_argument(
-        '-hln', '--hidden-layer-norm',
-        action='store_true',
-        help='hidden layer normalization flag'
-    )
-    parser.add_argument(
-        '-kl1', '--kernel-l1-regularizer',
-        type=float, default=0.0,
-        help='kernel L1-regularizer constant (default=0.0)'
-    )
-    parser.add_argument(
-        '-kl2', '--kernel-l2-regularizer',
-        type=float, default=0.0,
-        help='kernel L2-regularizer constant (default=0.0)'
-    )
-    parser.add_argument(
-        '-bl1', '--bias-l1-regularizer',
-        type=float, default=0.0,
-        help='bias L1-regularizer constant (default=0.0)'
-    )
-    parser.add_argument(
-        '-bl2', '--bias-l2-regularizer',
-        type=float, default=0.0,
-        help='bias L2-regularizer constant (default=0.0)'
-    )
-    parser.add_argument(
-        '-est', '--estimator',
-        type=str, choices=['pd', 'sf', 'hybrid'], default='pd',
-        help='gradient estimator (pd=pathwise derivatives, sf=score function, hybrid=pd+sf) (default=pd)'
-    )
-    parser.add_argument(
-        '-n', '--n-step',
-        type=int,
-        help='n-step hybrid estimator'
-    )
-    parser.add_argument(
-        '-bl', '--baseline',
-        action='store_true',
-        help='baseline flag'
-    )
+    # parser.add_argument(
+    #     '-hln', '--hidden-layer-norm',
+    #     action='store_true',
+    #     help='hidden layer normalization flag'
+    # )
+    # parser.add_argument(
+    #     '-kl1', '--kernel-l1-regularizer',
+    #     type=float, default=0.0,
+    #     help='kernel L1-regularizer constant (default=0.0)'
+    # )
+    # parser.add_argument(
+    #     '-kl2', '--kernel-l2-regularizer',
+    #     type=float, default=0.0,
+    #     help='kernel L2-regularizer constant (default=0.0)'
+    # )
+    # parser.add_argument(
+    #     '-bl1', '--bias-l1-regularizer',
+    #     type=float, default=0.0,
+    #     help='bias L1-regularizer constant (default=0.0)'
+    # )
+    # parser.add_argument(
+    #     '-bl2', '--bias-l2-regularizer',
+    #     type=float, default=0.0,
+    #     help='bias L2-regularizer constant (default=0.0)'
+    # )
     parser.add_argument(
         '-b', '--batch-size',
         type=int, default=256,
@@ -145,7 +130,7 @@ def print_parameters(args):
         print('layers = [{}]'.format(','.join(args.layers)))
         print('activation = {}'.format(args.activation))
         print('input  layer norm = {}'.format(args.input_layer_norm))
-        print('hidden layer norm = {}'.format(args.hidden_layer_norm))
+        # print('hidden layer norm = {}'.format(args.hidden_layer_norm))
         print()
         print('>> Hyperparameters:')
         print('epochs        = {}'.format(args.epochs))
@@ -154,17 +139,12 @@ def print_parameters(args):
         print('horizon       = {}'.format(args.horizon))
         print()
         print('>> Optimization:')
-        print('estimator = {}'.format(args.estimator))
-        if args.n_step:
-            print('n-step = {}'.format(args.n_step))
-        if args.estimator in ['sf', 'hybrid']:
-            print('baseline = {}'.format(args.baseline))
         print('optimizer     = {}'.format(args.optimizer))
         print('loss function = {}'.format(args.loss_fn))
-        print('kernel l1-regularization = {}'.format(args.kernel_l1_regularizer))
-        print('kernel l2-regularization = {}'.format(args.kernel_l2_regularizer))
-        print('bias l1-regularization = {}'.format(args.bias_l1_regularizer))
-        print('bias l2-regularization = {}'.format(args.bias_l2_regularizer))
+        # print('kernel l1-regularization = {}'.format(args.kernel_l1_regularizer))
+        # print('kernel l2-regularization = {}'.format(args.kernel_l2_regularizer))
+        # print('bias l1-regularization = {}'.format(args.bias_l1_regularizer))
+        # print('bias l2-regularization = {}'.format(args.bias_l2_regularizer))
         print()
 
 
