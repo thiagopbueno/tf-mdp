@@ -54,3 +54,7 @@ class TestPathwiseOptimizationPlanner(unittest.TestCase):
     def test_build(self):
         self.assertIsInstance(self.planner.model, MonteCarloSampling)
         self.assertIsInstance(self.planner.optimizer, optimizers['RMSProp'])
+
+    def test_run(self):
+        epochs = 10
+        self.planner.run(epochs, show_progress=False)
