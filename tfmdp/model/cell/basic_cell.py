@@ -16,7 +16,7 @@
 
 import rddl2tf
 
-from tfmdp.train.policy import DeepReactivePolicy
+from tfmdp.policy.drp import DeepReactivePolicy
 
 import collections
 import tensorflow as tf

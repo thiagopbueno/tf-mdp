@@ -17,8 +17,8 @@ import rddlgym
 
 from rddl2tf.compiler import Compiler
 
-from tfmdp.train.policy import DeepReactivePolicy
-from tfmdp.train.valuefn import Value
+from tfmdp.policy.feedforward import FeedforwardPolicy
+from tfmdp.valuefn.valuefn import Value
 
 import numpy as np
 import tensorflow as tf
@@ -31,9 +31,8 @@ class TestValueFn(unittest.TestCase):
         self.rddl1 = rddlgym.make('Navigation-v3', mode=rddlgym.AST)
         self.compiler1 = Compiler(self.rddl1, batch_mode=True)
 
-        self.layers = [64]
-        self.policy1 = DeepReactivePolicy(self.compiler1, self.layers, tf.nn.elu, input_layer_norm=False)
-
+        self.policy1 = FeedforwardPolicy(self.compiler1, {'layers': [64], 'activation': 'elu', 'input_layer_norm': False})
+        self.policy1.build()
         self.valuefn1 = Value(self.compiler1, self.policy1)
 
     def test_build_trajectory_graph(self):

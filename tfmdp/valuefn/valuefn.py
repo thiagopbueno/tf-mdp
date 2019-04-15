@@ -15,7 +15,7 @@
 
 
 from rddl2tf.compiler import Compiler
-from tfmdp.train.policy import DeepReactivePolicy
+from tfmdp.policy.drp import DeepReactivePolicy
 from tfrddlsim.simulation.policy_simulator import PolicySimulator
 
 import numpy as np

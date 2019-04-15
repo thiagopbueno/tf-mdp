@@ -22,7 +22,7 @@ from tfmdp.model.montecarlo import MonteCarloSampling
 from  tfmdp.train.losses import loss_fn
 from tfmdp.train.optimizers import optimizers
 # from tfmdp.train.callbacks import Callback
-from tfmdp.train.planner import PolicyOptimizationPlanner
+from tfmdp.planning.planner import PolicyOptimizationPlanner
 
 import sys
 import tensorflow as tf

@@ -83,7 +83,7 @@ class PolicyOptimizationPlanner(metaclass=abc.ABCMeta):
             json_config (str): A planner configuration encoded in JSON format.
 
         Returns:
-            :obj:`tfmdp.train.PolicyOptimizationPlanner`: A planner object.
+            :obj:`tfmdp.policy.drpOptimizationPlanner`: A planner object.
         '''
         config = json.loads(json_string)
         return cls(compiler, config)
