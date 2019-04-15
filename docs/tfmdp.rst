@@ -6,15 +6,17 @@ Subpackages
 
 .. toctree::
 
-    tfmdp.test
+    tfmdp.model
+    tfmdp.planning
+    tfmdp.policy
 
 Submodules
 ----------
 
-tfmdp.planner module
---------------------
+tfmdp.utils module
+------------------
 
-.. automodule:: tfmdp.planner
+.. automodule:: tfmdp.utils
     :members:
     :undoc-members:
     :show-inheritance:
