@@ -16,7 +16,9 @@
 import rddlgym
 
 from tfmdp.policy.feedforward import FeedforwardPolicy
-from tfmdp.model.cell.basic_cell import BasicMarkovCell, OutputTuple, to_tensor
+from tfmdp.model.cell.basic_cell import BasicMarkovCell, OutputTuple
+
+from tfmdp.model.utils import to_tensor
 
 import tensorflow as tf
 import unittest
