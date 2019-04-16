@@ -16,6 +16,7 @@
 
 import rddl2tf
 
+from tfmdp.model import utils
 from tfmdp.policy.drp import DeepReactivePolicy
 
 import collections
@@ -38,13 +39,6 @@ CellState = Sequence[tf.Tensor]
 
 OutputTuple = collections.namedtuple('OutputTuple', 'state action interms reward')
 
-
-def cell_size(sizes: Sequence[Shape]) -> Sequence[Union[Shape, int]]:
-    return tuple(sz if sz != () else (1,) for sz in sizes)
-
-
-def to_tensor(fluents):
-    return tuple(f.tensor for f in fluents)
 
 
 class BasicMarkovCell(tf.nn.rnn_cell.RNNCell):
@@ -74,17 +68,17 @@ class BasicMarkovCell(tf.nn.rnn_cell.RNNCell):
     @property
     def state_size(self) -> Sequence[Shape]:
         '''Returns the MDP state size.'''
-        return cell_size(self.compiler.rddl.state_size)
+        return utils.cell_size(self.compiler.rddl.state_size)
 
     @property
     def action_size(self) -> Sequence[Shape]:
         '''Returns the MDP action size.'''
-        return cell_size(self.compiler.rddl.action_size)
+        return utils.cell_size(self.compiler.rddl.action_size)
 
     @property
     def interm_size(self) -> Sequence[Shape]:
         '''Returns the MDP intermediate state size.'''
-        return cell_size(self.compiler.rddl.interm_size)
+        return utils.cell_size(self.compiler.rddl.interm_size)
 
     @property
     def output_size(self) -> Tuple[Sequence[Shape], Sequence[Shape], Sequence[Shape], int]:
@@ -122,8 +116,8 @@ class BasicMarkovCell(tf.nn.rnn_cell.RNNCell):
         reward = self.compiler.reward(state, action, next_state)
 
         # outputs
-        next_state = to_tensor(next_state)
-        interms = to_tensor(interms)
+        next_state = utils.to_tensor(next_state)
+        interms = utils.to_tensor(interms)
         output = OutputTuple(next_state, action, interms, reward)
 
         return (output, next_state)
