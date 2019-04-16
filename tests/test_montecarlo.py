@@ -17,8 +17,8 @@ import rddlgym
 
 from tfmdp.policy.feedforward import FeedforwardPolicy
 from tfmdp.model.cell.basic_cell import BasicMarkovCell
-from tfmdp.model.mrm import Trajectory
-from tfmdp.model.montecarlo import MonteCarloSampling
+from tfmdp.model.sequential.mrm import Trajectory
+from tfmdp.model.sequential.montecarlo import MonteCarloSampling
 
 import tensorflow as tf
 import unittest

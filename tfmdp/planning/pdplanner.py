@@ -17,7 +17,7 @@
 import rddl2tf.compiler
 
 from tfmdp.policy.drp import DeepReactivePolicy
-from tfmdp.model.montecarlo import MonteCarloSampling
+from tfmdp.model.sequential.montecarlo import MonteCarloSampling
 
 from  tfmdp.train.losses import loss_fn
 from tfmdp.train.optimizers import optimizers

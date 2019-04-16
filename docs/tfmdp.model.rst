@@ -11,18 +11,18 @@ Subpackages
 Submodules
 ----------
 
-tfmdp.model.montecarlo module
+tfmdp.model.sequential.montecarlo module
 -----------------------------
 
-.. automodule:: tfmdp.model.montecarlo
+.. automodule:: tfmdp.model.sequential.montecarlo
     :members:
     :undoc-members:
     :show-inheritance:
 
-tfmdp.model.mrm module
+tfmdp.model.sequential.mrm module
 ----------------------
 
-.. automodule:: tfmdp.model.mrm
+.. automodule:: tfmdp.model.sequential.mrm
     :members:
     :undoc-members:
     :show-inheritance:

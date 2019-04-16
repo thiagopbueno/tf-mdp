@@ -17,7 +17,7 @@
 import rddl2tf
 
 from tfmdp.policy.drp import DeepReactivePolicy
-from tfmdp.model.mrm import MarkovRecurrentModel, Trajectory
+from tfmdp.model.sequential.mrm import MarkovRecurrentModel, Trajectory
 from tfmdp.model.cell.basic_cell import BasicMarkovCell
 
 

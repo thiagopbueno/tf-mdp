@@ -90,7 +90,7 @@ class MarkovRecurrentModel(metaclass=abc.ABCMeta):
             json_config (str): A model configuration encoded in JSON format.
 
         Returns:
-            :obj:`tfmdp.model.mrm.MarkovRecurrentModel`: A MarkovRecurrentModel object.
+            :obj:`tfmdp.model.sequential.mrm.MarkovRecurrentModel`: A MarkovRecurrentModel object.
         '''
         config = json.loads(json_string)
         return cls(compiler, config)
