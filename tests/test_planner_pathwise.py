@@ -19,7 +19,7 @@ import rddlgym
 from tfmdp.policy.feedforward import FeedforwardPolicy
 from tfmdp.model.sequential.montecarlo import MonteCarloSampling
 from tfmdp.train.optimizers import optimizers
-from tfmdp.planning.pdplanner import PathwiseOptimizationPlanner
+from tfmdp.planning.pathwise import PathwiseOptimizationPlanner
 
 import unittest
 

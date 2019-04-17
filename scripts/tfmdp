@@ -167,7 +167,7 @@ def build_policy(compiler, args):
 
 
 def solve(compiler, policy, args):
-    from tfmdp.planning.pdplanner import PathwiseOptimizationPlanner
+    from tfmdp.planning.pathwise import PathwiseOptimizationPlanner
     config = {
         'batch_size': args.batch_size,
         'horizon': args.horizon,
