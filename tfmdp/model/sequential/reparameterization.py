@@ -101,3 +101,10 @@ class ReparameterizationSampling(MarkovRecurrentModel):
     def summary(self) -> None:
         '''Prints a string summary of the recurrent model.'''
         raise NotImplementedError
+
+    @property
+    def trainable_variables(self) -> Sequence[tf.Variable]:
+        '''Returns the list of trainable variables.'''
+        with self.graph.as_default():
+            noise_variables = tf.trainable_variables(r'.*reparameterization')
+            return noise_variables

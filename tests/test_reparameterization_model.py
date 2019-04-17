@@ -51,24 +51,23 @@ class TestMonteCarloSampling(unittest.TestCase):
         cls.config = {}
         cls.model = ReparameterizationSampling(cls.compiler, cls.config)
         cls.model.build(cls.policy)
+        cls.output = cls.model(cls.initial_state, cls.horizon)
 
     def test_build(self):
         self.assertIsInstance(self.model.cell, ReparameterizationCell)
         self.assertEqual(self.model.cell.policy, self.policy)
 
     def test_call(self):
-        output = self.model(self.initial_state, self.horizon)
-
         noise_size = self.model.noise.shape.as_list()[-1]
         timesteps_size = self.model.timesteps.shape.as_list()[-1]
         inputs_size = noise_size + timesteps_size
         self.assertListEqual(self.model.inputs.shape.as_list(), [self.batch_size, self.horizon, inputs_size])
         self.assertListEqual(self.model.timesteps.shape.as_list()[:2], self.model.noise.shape.as_list()[:2])
 
-        self.assertIsInstance(output, tuple)
-        self.assertEqual(len(output), 3)
+        self.assertIsInstance(self.output, tuple)
+        self.assertEqual(len(self.output), 3)
 
-        trajectory, final_state, total_reward = output
+        trajectory, final_state, total_reward = self.output
 
         self.assertIsInstance(trajectory, Trajectory)
 
@@ -88,3 +87,11 @@ class TestMonteCarloSampling(unittest.TestCase):
         self.assertIsInstance(total_reward, tf.Tensor)
         self.assertEqual(total_reward.dtype, tf.float32)
         self.assertListEqual(total_reward.shape.as_list(), [self.batch_size])
+
+    def test_trainable_variables(self):
+        var_lst1 = self.model.trainable_variables
+        var_lst2 = []
+        for _, var_lst in self.model.noise_map:
+            if var_lst is not None:
+                var_lst2 += var_lst
+        self.assertSetEqual(set(var_lst1), set(var_lst2))
