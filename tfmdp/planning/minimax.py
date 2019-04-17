@@ -59,6 +59,7 @@ class MinimaxOptimizationPlanner(PolicyOptimizationPlanner):
         self.horizon = config['horizon']
         self.batch_size = config['batch_size']
         self.learning_rate = config['learning_rate']
+        self.regularization_rate = config['regularization_rate']
 
     def build(self, policy: DeepReactivePolicy,
                     loss: str,
@@ -85,24 +86,37 @@ class MinimaxOptimizationPlanner(PolicyOptimizationPlanner):
                 self.loss = loss_fn[loss](self.avg_total_reward)
 
             with tf.name_scope('regularization'):
-                # TODO
-                print()
-                print(self.model.noise_map)
-                print(self.model.reparameterization_map)
-                self.regularization = None
+                self.regularization_loss = []
+
+                for variables, dists in zip(self.model.noise_map, self.model.reparameterization_map):
+
+                    noises = variables[1]
+                    if noises is None:
+                        continue
+
+                    for noise, dist in zip(noises, dists[1]):
+                        dist = dist[0]
+                        log_probs = dist.log_prob(noise)
+                        log_prob_per_batch = tf.reduce_sum(log_probs, axis=[1, 2])
+                        log_prob = tf.reduce_mean(log_prob_per_batch)
+                        self.regularization_loss.append(log_prob)
+
+                self.regularization_loss = sum(self.regularization_loss)
 
             with tf.name_scope('optimizer'):
                 self.optimizer = optimizers[optimizer](self.learning_rate)
 
-                with tf.name_scope('inner'):
-                    self.noise_variables = self.model.trainable_variables
-                    self.inner_train_op = self.optimizer.minimize(-self.loss, var_list=self.noise_variables)
-
                 with tf.name_scope('outter'):
                     self.policy_variables = policy.trainable_variables
-                    self.outter_train_op = self.optimizer.minimize(self.loss, var_list=self.policy_variables)
+                    self.outter_loss = self.loss
+                    self.outter_train_op = self.optimizer.minimize(self.outter_loss, var_list=self.policy_variables)
 
-    def run(self, epochs: int,
+                with tf.name_scope('inner'):
+                    self.noise_variables = self.model.trainable_variables
+                    self.inner_loss = -self.loss + self.regularization_rate * self.regularization_loss
+                    self.inner_train_op = self.optimizer.minimize(self.inner_loss, var_list=self.noise_variables)
+
+    def run(self, epochs: Tuple[int, int],
                   callbacks: Optional[Callbacks] = None,
                   show_progress: Optional[bool] = True) -> None:
         '''Runs the policy optimizer for a given number of `epochs`.

@@ -34,6 +34,7 @@ class TestMinimaxOptimizationPlanner(unittest.TestCase):
         cls.batch_size = 64
         cls.horizon = 20
         cls.learning_rate = 0.001
+        cls.regularization_rate = 0.1
 
         # rddl
         cls.compiler = rddlgym.make('Navigation-v2', rddlgym.SCG)
@@ -47,7 +48,8 @@ class TestMinimaxOptimizationPlanner(unittest.TestCase):
         cls.config = {
             'batch_size': cls.batch_size,
             'horizon': cls.horizon,
-            'learning_rate': cls.learning_rate
+            'learning_rate': cls.learning_rate,
+            'regularization_rate': cls.regularization_rate
         }
         cls.planner = MinimaxOptimizationPlanner(cls.compiler, cls.config)
         cls.planner.build(cls.policy, loss='mse', optimizer='RMSProp')
@@ -64,6 +66,8 @@ class TestMinimaxOptimizationPlanner(unittest.TestCase):
         self.assertEqual(len(trainable_variables), len(noise_variables) + len(policy_variables))
         self.assertSetEqual(set(trainable_variables), set(noise_variables) | set(policy_variables))
 
-    @unittest.skip
+        self.assertIsInstance(self.planner.regularization_loss, tf.Tensor)
+        self.assertListEqual(self.planner.regularization_loss.shape.as_list(), [])
+
     def test_run(self):
         self.fail()
