@@ -41,6 +41,7 @@ def get_noise_variables(noise_shapes: NoiseShape,
     noise_variables = []
 
     for name, shapes in noise_shapes:
+
         if not shapes:
             noise_variables.append((name, None))
         else:
@@ -50,7 +51,7 @@ def get_noise_variables(noise_shapes: NoiseShape,
             with tf.name_scope(name_scope):
                 for i, (dist, shape) in enumerate(shapes):
                     shape = [batch_size, horizon, *shape]
-                    xi = tf.get_variable('noise_{}_{}'.format(i, dist), shape=shape, dtype=tf.float32)
+                    xi = tf.get_variable('noise_{}_{}'.format(i, dist.name), shape=shape, dtype=tf.float32)
                     noises.append(xi)
 
             noise_variables.append((name, noises))
