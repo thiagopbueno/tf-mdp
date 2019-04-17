@@ -70,4 +70,5 @@ class TestMinimaxOptimizationPlanner(unittest.TestCase):
         self.assertListEqual(self.planner.regularization_loss.shape.as_list(), [])
 
     def test_run(self):
-        self.fail()
+        epochs = (5, 15)
+        self.planner.run(epochs, show_progress=False)

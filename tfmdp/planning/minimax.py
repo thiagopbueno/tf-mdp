@@ -28,7 +28,7 @@ from tfmdp.planning.planner import PolicyOptimizationPlanner
 import sys
 import tensorflow as tf
 
-from typing import Callable, Dict, List, Optional, Sequence
+from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 Callback = Callable[[None],None]
 Callbacks = Dict[str, Sequence[Callback]]
@@ -128,7 +128,23 @@ class MinimaxOptimizationPlanner(PolicyOptimizationPlanner):
             epochs (int): The number of training epochs.
             callbacks (Optional[Dict[str, List[Callback]]]): Mapping from events to lists of callables.
         '''
-        raise NotImplementedError
+        outter_epochs, inner_epochs = epochs
+
+        with tf.Session(graph=self.compiler.graph) as sess:
+            sess.run(tf.global_variables_initializer())
+
+            for outter_step in range(outter_epochs):
+
+                for inner_step in range(inner_epochs):
+                    _, loss_, reward_ = sess.run([self.inner_train_op, self.loss, self.avg_total_reward])
+
+                    if show_progress:
+                        print('(inner)  Epoch {0:5}: loss = {1:3.6f}\r'.format(inner_step, loss_), end='')
+
+                _, loss_, reward_ = sess.run([self.outter_train_op, self.loss, self.avg_total_reward])
+
+                if show_progress:
+                    print('\n(outter) Epoch {0:5}: loss = {1:3.6f}'.format(outter_step, loss_))
 
     def summary(self) -> None:
         '''Prints a string summary of the planner.'''
