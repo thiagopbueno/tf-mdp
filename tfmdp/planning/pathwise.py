@@ -49,6 +49,7 @@ class PathwiseOptimizationPlanner(PolicyOptimizationPlanner):
         self.horizon = config['horizon']
         self.batch_size = config['batch_size']
         self.learning_rate = config['learning_rate']
+        self.logdir = config.get('logdir', '/tmp/tfmdp/')
 
     def build(self, policy: DeepReactivePolicy,
                     loss: str,
@@ -60,23 +61,40 @@ class PathwiseOptimizationPlanner(PolicyOptimizationPlanner):
             loss (str): A differentiable loss function used to train the policy.
             optimizer (str): A gradient descent optimizer.
         '''
+        self.policy = policy
+        self.loss = loss_fn[loss]
+        self.optimizer = optimizers[optimizer]
+
         self.initial_state = self.compiler.compile_initial_state(self.batch_size)
 
         with self.compiler.graph.as_default():
+            self._build_model_ops()
+            self._build_loss_ops()
+            self._build_optimizer_ops()
+            self._build_summary_ops()
 
-            with tf.name_scope('model'):
-                self.model = MonteCarloSampling(self.compiler)
-                self.model.build(policy)
-                self.trajetory, self.final_state, self.total_reward = self.model(self.initial_state,
-                                                                                 self.horizon)
+    def _build_model_ops(self):
+        with tf.name_scope('model'):
+            self.model = MonteCarloSampling(self.compiler)
+            self.model.build(self.policy)
+            output = self.model(self.initial_state, self.horizon)
+            self.trajetory, self.final_state, self.total_reward = output
 
-            with tf.name_scope('loss'):
-                self.avg_total_reward = tf.reduce_mean(self.total_reward, name='avg_total_reward')
-                self.loss = loss_fn[loss](self.avg_total_reward)
+    def _build_loss_ops(self):
+        with tf.name_scope('loss'):
+            self.avg_total_reward = tf.reduce_mean(self.total_reward, name='avg_total_reward')
+            self.loss = self.loss(self.avg_total_reward)
 
-            with tf.name_scope('optimizer'):
-                self.optimizer = optimizers[optimizer](self.learning_rate)
-                self.train_op = self.optimizer.minimize(self.loss)
+    def _build_optimizer_ops(self):
+        with tf.name_scope('optimizer'):
+            self.optimizer = self.optimizer(self.learning_rate)
+            self.train_op = self.optimizer.minimize(self.loss)
+
+    def _build_summary_ops(self):
+        tf.summary.histogram('total_reward', self.total_reward)
+        tf.summary.scalar('avg_total_reward', self.avg_total_reward)
+        tf.summary.scalar('loss', self.loss)
+        self.summary = tf.summary.merge_all()
 
     def run(self, epochs: int,
                   callbacks: Optional[Callbacks] = None,
@@ -91,6 +109,8 @@ class PathwiseOptimizationPlanner(PolicyOptimizationPlanner):
             callbacks (Optional[Dict[str, List[Callback]]]): Mapping from events to lists of callables.
         '''
         with tf.Session(graph=self.compiler.graph) as sess:
+            writer = tf.summary.FileWriter(self.logdir, sess.graph)
+
             sess.run(tf.global_variables_initializer())
 
             reward = -sys.maxsize
@@ -106,6 +126,9 @@ class PathwiseOptimizationPlanner(PolicyOptimizationPlanner):
 
                 if show_progress:
                     print('Epoch {0:5}: loss = {1:3.6f}\r'.format(step, loss_), end='')
+
+                summary_ = sess.run(self.summary)
+                writer.add_summary(summary_)
 
             return losses, rewards
 
