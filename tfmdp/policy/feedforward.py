@@ -52,12 +52,13 @@ class FeedforwardPolicy(DeepReactivePolicy):
     @property
     def size(self) -> int:
         '''Returns the number of trainable parameters.'''
-        trainable_variables = self.vars
+        trainable_variables = self.trainable_variables
         shapes = [v.shape.as_list() for v in trainable_variables]
         return sum(np.prod(shape) for shape in shapes)
 
     @property
-    def vars(self) -> Sequence[tf.Variable]:
+    def trainable_variables(self) -> Sequence[tf.Variable]:
+        '''Returns the list of trainable variables.'''
         with self.graph.as_default():
             policy_vars = tf.trainable_variables(r'.*policy')
             return policy_vars

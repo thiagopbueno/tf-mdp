@@ -58,12 +58,12 @@ class TestFeedforwardPolicy(unittest.TestCase):
         params_string = utils.get_params_string(self.policy.config)
         self.assertEqual(self.policy.name, 'drp-ff-{}'.format(params_string))
 
-    def test_vars(self):
-        self.assertIsInstance(self.policy.vars, list)
-        self.assertEqual(len(self.policy.vars), 2 * (1 + len(self.config['layers']) + len(self.default_action)))
+    def test_trainable_variables(self):
+        self.assertIsInstance(self.policy.trainable_variables, list)
+        self.assertEqual(len(self.policy.trainable_variables), 2 * (1 + len(self.config['layers']) + len(self.default_action)))
 
     def test_size(self):
-        self.assertEqual(self.policy.size, sum(np.prod(var.shape.as_list()) for var in self.policy.vars))
+        self.assertEqual(self.policy.size, sum(np.prod(var.shape.as_list()) for var in self.policy.trainable_variables))
 
     def test_build_input_layer(self):
         self.assertIsInstance(self.policy._input_layer, StateLayer)
@@ -83,7 +83,7 @@ class TestFeedforwardPolicy(unittest.TestCase):
         action1 = self.policy(self.initial_state, self.horizon)
         with self.policy.graph.as_default():
             policy_vars1 = tf.trainable_variables()
-        self.assertEqual(len(policy_vars1), len(self.policy.vars))
+        self.assertEqual(len(policy_vars1), len(self.policy.trainable_variables))
 
         self.assertIsInstance(action1, tuple)
         self.assertEqual(len(action1), len(self.default_action))
@@ -94,6 +94,6 @@ class TestFeedforwardPolicy(unittest.TestCase):
         action2 = self.policy(self.initial_state, self.horizon)
         with self.policy.graph.as_default():
             policy_vars2 = tf.trainable_variables()
-        self.assertEqual(len(policy_vars2), len(self.policy.vars))
+        self.assertEqual(len(policy_vars2), len(self.policy.trainable_variables))
 
         self.assertEqual(len(policy_vars1), len(policy_vars2))

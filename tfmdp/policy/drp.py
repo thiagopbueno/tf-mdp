@@ -69,7 +69,7 @@ class DeepReactivePolicy(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractproperty
-    def vars(self) -> Sequence[tf.Variable]:
+    def trainable_variables(self) -> Sequence[tf.Variable]:
         '''Returns a list of the trainable variables.'''
         raise NotImplementedError
 
