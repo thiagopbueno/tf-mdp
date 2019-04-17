@@ -89,12 +89,15 @@ def encode_noise_as_inputs(noise_variables: Noise) -> Tuple[tf.Tensor, NoiseEnco
 
 def decode_inputs_as_noise(inputs: tf.Tensor, encoding: NoiseEncoding) -> Noise:
     noise_variables = []
+
     for name, slices in encoding:
         xi_lst = []
+
         for start, end, shape in slices:
-            xi = inputs[:, start:end]
-            batch_size = int(xi.shape[0])
-            xi = tf.reshape(xi, [batch_size, *shape])
+            xi = inputs[:, start:end+1]
+            xi = tf.reshape(xi, [-1, *shape])
             xi_lst.append(xi)
+
         noise_variables.append((name, xi_lst))
+
     return noise_variables
