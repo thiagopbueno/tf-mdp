@@ -78,7 +78,7 @@ class TestNoiseUtils(unittest.TestCase):
         for t in range(self.horizon):
             inputs_per_timestep = self.inputs[:, t, :]
 
-            noise_variables_per_timestep = utils.decode_inputs_as_noise(self.inputs, self.encoding)
+            noise_variables_per_timestep = utils.decode_inputs_as_noise(inputs_per_timestep, self.encoding)
             self.assertIsInstance(noise_variables_per_timestep, list)
             self.assertEqual(len(noise_variables_per_timestep), len(noise_variables_lst))
             for xi_per_timestep, xi in zip(noise_variables_per_timestep, noise_variables_lst):
