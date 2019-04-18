@@ -17,6 +17,7 @@
 
 
 import rddlgym
+import tfmdp
 
 import argparse
 import time
@@ -24,97 +25,142 @@ import time
 
 def parse_args():
     description = 'Probabilistic planning in continuous state-action MDPs using TensorFlow.'
-    parser = argparse.ArgumentParser(description=description)
-    parser.add_argument(
-        'rddl',
-        type=str,
-        help='RDDL file or rddlgym domain id'
-    )
-    parser.add_argument(
-        '-l', '--layers',
-        nargs='+',
-        default=[],
-        help='number of units in each hidden layer in policy network'
-    )
-    parser.add_argument(
-        '-a', '--activation',
-        type=str, choices=['none', 'sigmoid', 'tanh', 'relu', 'relu6', 'crelu', 'elu', 'selu', 'softplus', 'softsign'],
-        default='elu',
-        help='activation function for hidden layers in policy network'
-    )
-    parser.add_argument(
-        '-iln', '--input-layer-norm',
-        action='store_true',
-        help='input layer normalization flag'
-    )
-    # parser.add_argument(
-    #     '-hln', '--hidden-layer-norm',
-    #     action='store_true',
-    #     help='hidden layer normalization flag'
-    # )
-    # parser.add_argument(
-    #     '-kl1', '--kernel-l1-regularizer',
-    #     type=float, default=0.0,
-    #     help='kernel L1-regularizer constant (default=0.0)'
-    # )
-    # parser.add_argument(
-    #     '-kl2', '--kernel-l2-regularizer',
-    #     type=float, default=0.0,
-    #     help='kernel L2-regularizer constant (default=0.0)'
-    # )
-    # parser.add_argument(
-    #     '-bl1', '--bias-l1-regularizer',
-    #     type=float, default=0.0,
-    #     help='bias L1-regularizer constant (default=0.0)'
-    # )
-    # parser.add_argument(
-    #     '-bl2', '--bias-l2-regularizer',
-    #     type=float, default=0.0,
-    #     help='bias L2-regularizer constant (default=0.0)'
-    # )
-    parser.add_argument(
-        '-b', '--batch-size',
-        type=int, default=256,
-        help='number of trajectories in a batch (default=256)'
-    )
-    parser.add_argument(
-        '-hr', '--horizon',
-        type=int, default=40,
-        help='number of timesteps (default=40)'
-    )
-    parser.add_argument(
-        '-e', '--epochs',
-        type=int, default=200,
-        help='number of timesteps (default=200)'
-    )
-    parser.add_argument(
-        '-lr', '--learning-rate',
-        type=float, default=0.001,
-        help='optimizer learning rate (default=0.001)'
-    )
-    parser.add_argument(
-        '-opt', '--optimizer',
-        type=str, choices=['Adadelta', 'Adagrad', 'Adam', 'GradientDescent', 'ProximalGradientDescent', 'ProximalAdagrad', 'RMSProp'],
-        default='RMSProp',
-        help='loss optimizer (default=RMSProp)'
-    )
-    parser.add_argument(
-        '-lfn', '--loss-fn',
-        type=str, choices=['linear', 'mse'],
-        default='linear',
-        help='loss function (default=linear)'
-    )
+    usage = '%(prog)s <planner> <rddl> <policy> <optimization> [-h] [--version]'
+
+    parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument(
         '-ld', '--logdir',
         type=str, default='/tmp/tfmdp',
         help='log directory for data summaries (default=/tmp/tfmdp)'
     )
     parser.add_argument(
+        '--version',
+        action='version',
+        version=tfmdp.__version__
+    )
+    parser.add_argument(
         '-v', '--verbose',
         action='store_true',
         help='verbosity mode'
     )
-    return parser.parse_args()
+
+    policy_group = parser.add_argument_group('Deep Reactive Policy')
+    policy_group.add_argument(
+        '-l', dest='layers',
+        nargs='+',
+        default=[],
+        help='number of units in each hidden layer'
+    )
+    policy_group.add_argument(
+        '-a', dest='activation',
+        type=str, choices=['none', 'sigmoid', 'tanh', 'relu', 'relu6', 'crelu', 'elu', 'selu', 'softplus', 'softsign'],
+        default='elu',
+        help='activation function for hidden layers'
+    )
+    policy_group.add_argument(
+        '-iln', '--input-layer-norm',
+        action='store_true', default=False,
+        help='input layer normalization flag'
+    )
+
+    optimization_group = parser.add_argument_group('Optimization')
+    optimization_group.add_argument(
+        '--optimizer',
+        type=str, choices=['Adadelta', 'Adagrad', 'Adam', 'GradientDescent', 'ProximalGradientDescent', 'ProximalAdagrad', 'RMSProp'],
+        default='RMSProp',
+        help='loss optimizer (default=RMSProp)'
+    )
+    optimization_group.add_argument(
+        '-lfn', '--loss-fn',
+        type=str, choices=['linear', 'mse'],
+        default='linear',
+        help='loss function (default=linear)'
+    )
+    optimization_group.add_argument(
+        '-lr', '--learning-rate',
+        type=float, default=0.001,
+        help='optimizer learning rate (default=0.001)'
+    )
+
+    command_parser = argparse.ArgumentParser(description=description, usage=usage, parents=[parser])
+
+    subparsers = command_parser.add_subparsers(help='Planners')
+
+    montecarlo_description = 'Monte Carlo trajectory sampling with pathwise derivatives'
+    montecarlo_usage = 'tfmdp montecarlo <rddl> <policy> <optimization> <OPTIONS> [-v]'
+    montecarlo_parser = subparsers.add_parser(
+        'montecarlo',
+        help=montecarlo_description + ' (--help for more options)',
+        description='(tf-mdp) '+ montecarlo_description,
+        usage=montecarlo_usage,
+        parents=[parser]
+    )
+    montecarlo_parser.set_defaults(func=montecarlo)
+    montecarlo_parser.add_argument(
+        'rddl',
+        type=str,
+        help='RDDL file or rddlgym\'s domain/instance id'
+    )
+    montecarlo_hyperparameters_group = montecarlo_parser.add_argument_group('Hyper-parameters')
+    montecarlo_hyperparameters_group.add_argument(
+        '-b', '--batch-size',
+        type=int, default=256,
+        help='number of trajectories in a batch (default=256)'
+    )
+    montecarlo_hyperparameters_group.add_argument(
+        '-hr', '--horizon',
+        type=int, default=40,
+        help='number of timesteps (default=40)'
+    )
+    montecarlo_hyperparameters_group.add_argument(
+        '-e', '--epochs',
+        type=int, default=200,
+        help='number of training epochs (default=200)'
+    )
+
+    minimax_description = 'Robust trajectory sampling with stochastic reparameterization'
+    minimax_usage = 'tfmdp minimax <rddl> <policy> <optimization> <OPTIONS> [-v]'
+    minimax_parser = subparsers.add_parser(
+        'minimax',
+        help=minimax_description + ' (--help for more options)',
+        description='(tf-mdp) '+ minimax_description,
+        usage=minimax_usage,
+        parents=[parser]
+    )
+    minimax_parser.set_defaults(func=minimax)
+    minimax_parser.add_argument(
+        'rddl',
+        type=str,
+        help='RDDL file or rddlgym\'s domain/instance id'
+    )
+    minimax_hyperparameters_group = minimax_parser.add_argument_group('Hyper-parameters')
+    minimax_hyperparameters_group.add_argument(
+        '-b', '--batch-size',
+        type=int, default=256,
+        help='number of trajectories in a batch (default=256)'
+    )
+    minimax_hyperparameters_group.add_argument(
+        '-hr', '--horizon',
+        type=int, default=40,
+        help='number of timesteps (default=40)'
+    )
+    minimax_hyperparameters_group.add_argument(
+        '-ie', '--inner-epochs',
+        type=int, default=30,
+        help='number of training epochs for inner optimization level (default=30)'
+    )
+    minimax_hyperparameters_group.add_argument(
+        '-oe', '--outter-epochs',
+        type=int, default=200,
+        help='number of training epochs for outter optimization level (default=200)'
+    )
+    minimax_hyperparameters_group.add_argument(
+        '--noise', dest='regularization_rate',
+        type=float, default=0.1,
+        help='Noise log prob regularization rate (default=0.1)'
+    )
+
+    return command_parser.parse_args()
 
 
 def print_parameters(args):
@@ -126,25 +172,18 @@ def print_parameters(args):
         print('>> RDDL:   {}'.format(args.rddl))
         print('>> logdir: {}'.format(args.logdir))
         print()
-        print('>> Policy Net:')
+        print('>> Deep Reactive Policy:')
         print('layers = [{}]'.format(','.join(args.layers)))
         print('activation = {}'.format(args.activation))
         print('input  layer norm = {}'.format(args.input_layer_norm))
-        # print('hidden layer norm = {}'.format(args.hidden_layer_norm))
-        print()
-        print('>> Hyperparameters:')
-        print('epochs        = {}'.format(args.epochs))
-        print('learning rate = {}'.format(args.learning_rate))
-        print('batch size    = {}'.format(args.batch_size))
-        print('horizon       = {}'.format(args.horizon))
         print()
         print('>> Optimization:')
         print('optimizer     = {}'.format(args.optimizer))
         print('loss function = {}'.format(args.loss_fn))
-        # print('kernel l1-regularization = {}'.format(args.kernel_l1_regularizer))
-        # print('kernel l2-regularization = {}'.format(args.kernel_l2_regularizer))
-        # print('bias l1-regularization = {}'.format(args.bias_l1_regularizer))
-        # print('bias l2-regularization = {}'.format(args.bias_l2_regularizer))
+        print('learning rate = {}'.format(args.learning_rate))
+        print('batch size    = {}'.format(args.batch_size))
+        print('horizon       = {}'.format(args.horizon))
+        print('epochs        = {}'.format(args.epochs))
         print()
 
 
@@ -166,7 +205,7 @@ def build_policy(compiler, args):
     return policy
 
 
-def solve(compiler, policy, args):
+def montecarlo(compiler, policy, args):
     from tfmdp.planning.pathwise import PathwiseOptimizationPlanner
     config = {
         'batch_size': args.batch_size,
@@ -177,6 +216,22 @@ def solve(compiler, policy, args):
     planner = PathwiseOptimizationPlanner(compiler, config)
     planner.build(policy, loss=args.loss_fn, optimizer=args.optimizer)
     _, rewards = planner.run(args.epochs)
+    return rewards
+
+
+def minimax(compiler, policy, args):
+    from tfmdp.planning.minimax import MinimaxOptimizationPlanner
+    config = {
+        'batch_size': args.batch_size,
+        'horizon': args.horizon,
+        'learning_rate': args.learning_rate,
+        'regularization_rate': args.regularization_rate,
+        'logdir': args.logdir
+    }
+    planner = MinimaxOptimizationPlanner(compiler, config)
+    planner.build(policy, loss=args.loss_fn, optimizer=args.optimizer)
+    epochs = (args.outter_epochs, args.inner_epochs)
+    _, rewards = planner.run(epochs)
     return rewards
 
 
@@ -202,7 +257,7 @@ if __name__ == '__main__':
     print('>> Optimizing...')
     start = time.time()
     drp = build_policy(compiler, args)
-    rewards = solve(compiler, drp, args)
+    rewards = args.func(compiler, drp, args)
     end = time.time()
     uptime = end - start
     print()
