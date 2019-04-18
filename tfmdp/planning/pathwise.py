@@ -49,7 +49,7 @@ class PathwiseOptimizationPlanner(PolicyOptimizationPlanner):
         self.horizon = config['horizon']
         self.batch_size = config['batch_size']
         self.learning_rate = config['learning_rate']
-        self.logdir = config.get('logdir', '/tmp/tfmdp/')
+        self.logdir = config.get('logdir')
 
     def build(self, policy: DeepReactivePolicy,
                     loss: str,
@@ -83,6 +83,7 @@ class PathwiseOptimizationPlanner(PolicyOptimizationPlanner):
     def _build_loss_ops(self):
         with tf.name_scope('loss'):
             self.avg_total_reward = tf.reduce_mean(self.total_reward, name='avg_total_reward')
+            self.min_total_reward = tf.reduce_min(self.total_reward, name='min_total_reward')
             self.loss = self.loss(self.avg_total_reward)
 
     def _build_optimizer_ops(self):
@@ -91,9 +92,13 @@ class PathwiseOptimizationPlanner(PolicyOptimizationPlanner):
             self.train_op = self.optimizer.minimize(self.loss)
 
     def _build_summary_ops(self):
+        if self.logdir is None:
+            return
+
         with tf.name_scope('summary'):
             tf.summary.histogram('total_reward', self.total_reward)
             tf.summary.scalar('avg_total_reward', self.avg_total_reward)
+            tf.summary.scalar('min_total_reward', self.min_total_reward)
             tf.summary.scalar('loss', self.loss)
             for policy_var in self.policy.trainable_variables:
                 tf.summary.histogram(policy_var.name, policy_var)
@@ -112,12 +117,14 @@ class PathwiseOptimizationPlanner(PolicyOptimizationPlanner):
             callbacks (Optional[Dict[str, List[Callback]]]): Mapping from events to lists of callables.
         '''
         with tf.Session(graph=self.compiler.graph) as sess:
-            writer = tf.summary.FileWriter(self.logdir, sess.graph)
+
+            if self.logdir:
+                writer = tf.summary.FileWriter(self.logdir, sess.graph)
 
             sess.run(tf.global_variables_initializer())
 
             reward = -sys.maxsize
-            losses, rewards = [], []
+            rewards = []
 
             for step in range(epochs):
                 _, loss_, reward_ = sess.run([self.train_op, self.loss, self.avg_total_reward])
@@ -125,15 +132,15 @@ class PathwiseOptimizationPlanner(PolicyOptimizationPlanner):
                 if reward_ > reward:
                     reward = reward_
                     rewards.append((step, reward_))
-                    losses.append((step, loss_))
 
                 if show_progress:
                     print('Epoch {0:5}: loss = {1:3.6f}\r'.format(step, loss_), end='')
 
-                summary_ = sess.run(self.summary)
-                writer.add_summary(summary_, step)
+                if self.logdir:
+                    summary_ = sess.run(self.summary)
+                    writer.add_summary(summary_, step)
 
-            return losses, rewards
+            return rewards
 
     def summary(self) -> None:
         '''Prints a string summary of the planner.'''

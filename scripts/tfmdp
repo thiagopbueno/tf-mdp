@@ -237,7 +237,7 @@ def minimax(compiler, policy, args):
     planner = MinimaxOptimizationPlanner(compiler, config)
     planner.build(policy, loss=args.loss_fn, optimizer=args.optimizer)
     epochs = (args.outter_epochs, args.inner_epochs)
-    _, rewards = planner.run(epochs)
+    rewards = planner.run(epochs)
     return rewards
 
 
