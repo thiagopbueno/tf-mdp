@@ -17,6 +17,7 @@
 import rddlgym
 
 from tfmdp.policy.feedforward import FeedforwardPolicy
+from tfmdp.model.sequential.montecarlo import MonteCarloSampling
 from tfmdp.model.sequential.reparameterization import ReparameterizationSampling
 from tfmdp.train.optimizers import optimizers
 from tfmdp.planning.minimax import MinimaxOptimizationPlanner
@@ -31,7 +32,8 @@ class TestMinimaxOptimizationPlanner(unittest.TestCase):
     def setUpClass(cls):
 
         # hyper-parameters
-        cls.batch_size = 64
+        cls.train_batch_size = 16
+        cls.test_batch_size = 32
         cls.horizon = 20
         cls.learning_rate = 0.001
         cls.regularization_rate = 0.1
@@ -46,7 +48,8 @@ class TestMinimaxOptimizationPlanner(unittest.TestCase):
 
         # planner
         cls.config = {
-            'batch_size': cls.batch_size,
+            'test_batch_size': cls.test_batch_size,
+            'train_batch_size': cls.train_batch_size,
             'horizon': cls.horizon,
             'learning_rate': cls.learning_rate,
             'regularization_rate': cls.regularization_rate
@@ -55,7 +58,8 @@ class TestMinimaxOptimizationPlanner(unittest.TestCase):
         cls.planner.build(cls.policy, loss='mse', optimizer='RMSProp')
 
     def test_build(self):
-        self.assertIsInstance(self.planner.model, ReparameterizationSampling)
+        self.assertIsInstance(self.planner.train_model, ReparameterizationSampling)
+        self.assertIsInstance(self.planner.test_model, MonteCarloSampling)
         self.assertIsInstance(self.planner.optimizer, optimizers['RMSProp'])
 
         noise_variables = self.planner.noise_variables

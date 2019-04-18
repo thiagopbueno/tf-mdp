@@ -17,7 +17,7 @@
 import rddl2tf.compiler
 
 from tfmdp.policy.drp import DeepReactivePolicy
-# from tfmdp.model.sequential.montecarlo import MonteCarloSampling
+from tfmdp.model.sequential.montecarlo import MonteCarloSampling
 from tfmdp.model.sequential.reparameterization import ReparameterizationSampling
 
 from  tfmdp.train.losses import loss_fn
@@ -57,10 +57,11 @@ class MinimaxOptimizationPlanner(PolicyOptimizationPlanner):
         super(MinimaxOptimizationPlanner, self).__init__(compiler, config)
 
         self.horizon = config['horizon']
-        self.batch_size = config['batch_size']
+        self.train_batch_size = config['train_batch_size']
+        self.test_batch_size = config['test_batch_size']
         self.learning_rate = config['learning_rate']
         self.regularization_rate = config['regularization_rate']
-        self.logdir = config.get('logdir', '/tmp/tfmdp/')
+        self.logdir = config.get('logdir')
 
     def build(self, policy: DeepReactivePolicy,
                     loss: str,
@@ -76,32 +77,40 @@ class MinimaxOptimizationPlanner(PolicyOptimizationPlanner):
         self.loss = loss_fn[loss]
         self.optimizer = optimizers[optimizer]
 
-        self.initial_state = self.compiler.compile_initial_state(self.batch_size)
-
         with self.compiler.graph.as_default():
-            self._build_model_ops()
+            self._build_test_ops()
+            self._build_train_ops()
             self._build_loss_ops()
             self._build_regularization_loss_ops()
             self._build_optimizer_ops()
             self._build_summary_ops()
 
-    def _build_model_ops(self):
+    def _build_test_ops(self):
+        with tf.name_scope('test'):
+            self.test_initial_state = self.compiler.compile_initial_state(self.test_batch_size)
+            self.test_model = MonteCarloSampling(self.compiler)
+            self.test_model.build(self.policy)
+            _, _, self.test_total_reward = self.test_model(self.test_initial_state, self.horizon)
+            self.test_avg_total_reward = tf.reduce_mean(self.test_total_reward, name='test_avg_total_reward')
+            self.test_min_total_reward = tf.reduce_min(self.test_total_reward, name='test_min_total_reward')
+
+    def _build_train_ops(self):
         with tf.name_scope('model'):
-            self.model = ReparameterizationSampling(self.compiler, config={})
-            self.model.build(self.policy)
-            output = self.model(self.initial_state, self.horizon)
-            self.trajetory, self.final_state, self.total_reward = output
+            self.initial_state = self.compiler.compile_initial_state(self.train_batch_size)
+            self.train_model = ReparameterizationSampling(self.compiler, config={})
+            self.train_model.build(self.policy)
+            _, _, self.train_total_reward = self.train_model(self.initial_state, self.horizon)
 
     def _build_loss_ops(self):
         with tf.name_scope('loss'):
-            self.avg_total_reward = tf.reduce_mean(self.total_reward, name='avg_total_reward')
-            self.loss = self.loss(self.avg_total_reward)
+            self.train_avg_total_reward = tf.reduce_mean(self.train_total_reward, name='train_avg_total_reward')
+            self.loss = self.loss(self.train_avg_total_reward)
 
     def _build_regularization_loss_ops(self):
         with tf.name_scope('regularization'):
             self.regularization_loss = []
 
-            for variables, dists in zip(self.model.noise_map, self.model.reparameterization_map):
+            for variables, dists in zip(self.train_model.noise_map, self.train_model.reparameterization_map):
 
                 noises = variables[1]
                 if noises is None:
@@ -126,20 +135,30 @@ class MinimaxOptimizationPlanner(PolicyOptimizationPlanner):
                 self.outter_train_op = self.optimizer.minimize(self.outter_loss, var_list=self.policy_variables)
 
             with tf.name_scope('inner'):
-                self.noise_variables = self.model.trainable_variables
+                self.noise_variables = self.train_model.trainable_variables
                 self.inner_loss = -self.loss + self.regularization_rate * self.regularization_loss
                 self.inner_train_op = self.optimizer.minimize(self.inner_loss, var_list=self.noise_variables)
 
     def _build_summary_ops(self):
+        if self.logdir is None:
+            return
+
         with tf.name_scope('summary'):
-            tf.summary.histogram('total_reward', self.total_reward)
-            tf.summary.scalar('avg_total_reward', self.avg_total_reward)
+            # test performance
+            tf.summary.histogram('test_total_reward', self.test_total_reward)
+            tf.summary.scalar('test_avg_total_reward', self.test_avg_total_reward)
+            tf.summary.scalar('test_min_total_reward', self.test_min_total_reward)
+
+            # train
             tf.summary.scalar('loss', self.loss)
             tf.summary.scalar('regularization_loss', self.regularization_loss)
+
+            # trainable variables
             for noise_var in self.noise_variables:
                 tf.summary.histogram(noise_var.name, noise_var)
             for policy_var in self.policy_variables:
                 tf.summary.histogram(policy_var.name, policy_var)
+
             self.summary = tf.summary.merge_all()
 
     def run(self, epochs: Tuple[int, int],
@@ -157,28 +176,45 @@ class MinimaxOptimizationPlanner(PolicyOptimizationPlanner):
         outter_epochs, inner_epochs = epochs
 
         with tf.Session(graph=self.compiler.graph) as sess:
-            writer = tf.summary.FileWriter(self.logdir, sess.graph)
+
+            if self.logdir:
+                writer = tf.summary.FileWriter(self.logdir, sess.graph)
 
             sess.run(tf.global_variables_initializer())
 
+            reward = -sys.maxsize
+            rewards = []
+
+            global_step = 0
             for outter_step in range(outter_epochs):
 
                 for inner_step in range(inner_epochs):
                     _, loss_ = sess.run([self.inner_train_op, self.loss])
+                    global_step += 1
 
-                    summary_ = sess.run(self.summary)
-                    writer.add_summary(summary_)
+                    if self.logdir:
+                        summary_ = sess.run(self.summary)
+                        writer.add_summary(summary_, global_step)
 
                     if show_progress:
                         print('(inner)  Epoch {0:5}: loss = {1:3.6f}\r'.format(inner_step, loss_), end='')
 
                 _, loss_ = sess.run([self.outter_train_op, self.loss])
+                global_step += 1
 
-                summary_ = sess.run(self.summary)
-                writer.add_summary(summary_)
+                if self.logdir:
+                    summary_ = sess.run(self.summary)
+                    writer.add_summary(summary_, global_step)
 
                 if show_progress:
                     print('\n(outter) Epoch {0:5}: loss = {1:3.6f}'.format(outter_step, loss_))
+
+                test_avg_total_reward_ = sess.run(self.test_avg_total_reward)
+                if test_avg_total_reward_ > reward:
+                    reward = test_avg_total_reward_
+                    rewards.append((outter_step, test_avg_total_reward_))
+
+            return rewards
 
     def summary(self) -> None:
         '''Prints a string summary of the planner.'''
