@@ -91,10 +91,13 @@ class PathwiseOptimizationPlanner(PolicyOptimizationPlanner):
             self.train_op = self.optimizer.minimize(self.loss)
 
     def _build_summary_ops(self):
-        tf.summary.histogram('total_reward', self.total_reward)
-        tf.summary.scalar('avg_total_reward', self.avg_total_reward)
-        tf.summary.scalar('loss', self.loss)
-        self.summary = tf.summary.merge_all()
+        with tf.name_scope('summary'):
+            tf.summary.histogram('total_reward', self.total_reward)
+            tf.summary.scalar('avg_total_reward', self.avg_total_reward)
+            tf.summary.scalar('loss', self.loss)
+            for policy_var in self.policy.trainable_variables:
+                tf.summary.histogram(policy_var.name, policy_var)
+            self.summary = tf.summary.merge_all()
 
     def run(self, epochs: int,
                   callbacks: Optional[Callbacks] = None,
@@ -128,7 +131,7 @@ class PathwiseOptimizationPlanner(PolicyOptimizationPlanner):
                     print('Epoch {0:5}: loss = {1:3.6f}\r'.format(step, loss_), end='')
 
                 summary_ = sess.run(self.summary)
-                writer.add_summary(summary_)
+                writer.add_summary(summary_, step)
 
             return losses, rewards
 

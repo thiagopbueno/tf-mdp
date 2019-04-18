@@ -131,11 +131,16 @@ class MinimaxOptimizationPlanner(PolicyOptimizationPlanner):
                 self.inner_train_op = self.optimizer.minimize(self.inner_loss, var_list=self.noise_variables)
 
     def _build_summary_ops(self):
-        tf.summary.histogram('total_reward', self.total_reward)
-        tf.summary.scalar('avg_total_reward', self.avg_total_reward)
-        tf.summary.scalar('loss', self.loss)
-        tf.summary.scalar('regularization_loss', self.regularization_loss)
-        self.summary = tf.summary.merge_all()
+        with tf.name_scope('summary'):
+            tf.summary.histogram('total_reward', self.total_reward)
+            tf.summary.scalar('avg_total_reward', self.avg_total_reward)
+            tf.summary.scalar('loss', self.loss)
+            tf.summary.scalar('regularization_loss', self.regularization_loss)
+            for noise_var in self.noise_variables:
+                tf.summary.histogram(noise_var.name, noise_var)
+            for policy_var in self.policy_variables:
+                tf.summary.histogram(policy_var.name, policy_var)
+            self.summary = tf.summary.merge_all()
 
     def run(self, epochs: Tuple[int, int],
                   callbacks: Optional[Callbacks] = None,
