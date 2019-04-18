@@ -135,9 +135,14 @@ def parse_args():
     )
     minimax_hyperparameters_group = minimax_parser.add_argument_group('Hyper-parameters')
     minimax_hyperparameters_group.add_argument(
-        '-b', '--batch-size',
+        '-btrain', '--train-batch-size',
         type=int, default=256,
-        help='number of trajectories in a batch (default=256)'
+        help='number of training trajectories in a batch (default=256)'
+    )
+    minimax_hyperparameters_group.add_argument(
+        '-btest', '--test-batch-size',
+        type=int, default=1024,
+        help='number of test trajectories in a batch (default=1024)'
     )
     minimax_hyperparameters_group.add_argument(
         '-hr', '--horizon',
@@ -215,14 +220,15 @@ def montecarlo(compiler, policy, args):
     }
     planner = PathwiseOptimizationPlanner(compiler, config)
     planner.build(policy, loss=args.loss_fn, optimizer=args.optimizer)
-    _, rewards = planner.run(args.epochs)
+    rewards = planner.run(args.epochs)
     return rewards
 
 
 def minimax(compiler, policy, args):
     from tfmdp.planning.minimax import MinimaxOptimizationPlanner
     config = {
-        'batch_size': args.batch_size,
+        'train_batch_size': args.train_batch_size,
+        'test_batch_size': args.test_batch_size,
         'horizon': args.horizon,
         'learning_rate': args.learning_rate,
         'regularization_rate': args.regularization_rate,
