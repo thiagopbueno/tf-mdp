@@ -24,7 +24,7 @@ setup(
     packages=find_packages(),
     scripts=['scripts/tfmdp'],
     install_requires=[
-        'rddl2tf>=0.5.4',
+        'rddl2tf>=0.5.5',
         'rddlgym>=0.5.8',
         'tfrddlsim>=0.7.0',
         'tensorflow',
