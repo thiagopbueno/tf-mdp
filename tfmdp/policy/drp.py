@@ -53,6 +53,7 @@ class DeepReactivePolicy(metaclass=abc.ABCMeta):
     def __init__(self, compiler: rddl2tf.compiler.Compiler, config: Dict) -> None:
         self.compiler = compiler
         self.config = config
+        self.saver = None
 
     @abc.abstractproperty
     def name(self) -> str:
@@ -103,9 +104,10 @@ class DeepReactivePolicy(metaclass=abc.ABCMeta):
         Returns:
             str: The path prefix of the newly created checkpoint file.
         '''
-        if self._saver is None:
-            self._saver = tf.train.Saver()
-        self._checkpoint = self._saver.save(sess, path)
+        if self.saver is None:
+            self.saver = tf.train.Saver(self.trainable_variables)
+
+        self._checkpoint = self.saver.save(sess, '{}/drp.ckpt'.format(path))
         return self._checkpoint
 
     def restore(self, sess: tf.Session, path: Optional[str] = None) -> None:
@@ -117,15 +119,27 @@ class DeepReactivePolicy(metaclass=abc.ABCMeta):
             sess (:obj:`tf.Session`): A running session.
             path (Optional[str]): An optional path to a checkpoint directory.
         '''
-        if self._saver is None:
-            self._saver = tf.train.Saver()
+        if self.saver is None:
+            self.saver = tf.train.Saver(self.trainable_variables)
+
         if path is None:
             path = self._checkpoint
-        self._saver.restore(sess, path)
+
+        self.saver.restore(sess, path)
+
+    def save_config(self, path: str) -> None:
+        '''Serializes policy configuration json file to `path` directory.'''
+        filename = '{}/drp.config.json'.format(path)
+        with open(filename, 'w') as file:
+            file.write(self.to_json())
 
     def to_json(self) -> str:
         '''Returns the policy configuration parameters serialized in JSON format.'''
-        return json.dumps(self.config, sort_keys=True, indent=4)
+        json_config = {
+            'class': self.__class__.__name__,
+            'config': { **self.config }
+        }
+        return json.dumps(json_config, sort_keys=True, indent=4)
 
     @classmethod
     def from_json(cls, compiler: rddl2tf.compiler.Compiler,
@@ -139,10 +153,9 @@ class DeepReactivePolicy(metaclass=abc.ABCMeta):
         Returns:
             :obj:`tfmdp.policy.drp.DeepReactivePolicy`: A DRP object.
         '''
-        config = json.loads(json_string)
+        config = json.loads(json_config)
         return cls(compiler, config)
 
     def summary(self) -> None:
         '''Prints a string summary of the DRP.'''
-        print(self.__class__)
         print(self.to_json())

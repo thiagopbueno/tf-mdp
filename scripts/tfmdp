@@ -29,9 +29,14 @@ def parse_args():
 
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument(
+        '-o', '--output',
+        type=str,
+        help='output directory for policy serialization'
+    )
+    parser.add_argument(
         '-ld', '--logdir',
-        type=str, default='/tmp/tfmdp',
-        help='log directory for data summaries (default=/tmp/tfmdp)'
+        type=str,
+        help='log directory for data summaries'
     )
     parser.add_argument(
         '--version',
@@ -216,7 +221,8 @@ def montecarlo(compiler, policy, args):
         'batch_size': args.batch_size,
         'horizon': args.horizon,
         'learning_rate': args.learning_rate,
-        'logdir': args.logdir
+        'logdir': args.logdir,
+        'output': args.output
     }
     planner = PathwiseOptimizationPlanner(compiler, config)
     planner.build(policy, loss=args.loss_fn, optimizer=args.optimizer)
@@ -232,7 +238,8 @@ def minimax(compiler, policy, args):
         'horizon': args.horizon,
         'learning_rate': args.learning_rate,
         'regularization_rate': args.regularization_rate,
-        'logdir': args.logdir
+        'logdir': args.logdir,
+        'output': args.output
     }
     planner = MinimaxOptimizationPlanner(compiler, config)
     planner.build(policy, loss=args.loss_fn, optimizer=args.optimizer)
@@ -270,6 +277,10 @@ if __name__ == '__main__':
     print('Done in {:.6f} sec.'.format(uptime))
     print()
 
+    if args.output:
+        drp.save_config(args.output)
+
     report_performance(rewards, args.horizon)
 
-    print('tensorboard --logdir {}\n'.format(args.logdir))
+    if args.logdir:
+        print('tensorboard --logdir {}\n'.format(args.logdir))

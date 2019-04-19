@@ -61,7 +61,6 @@ class MinimaxOptimizationPlanner(PolicyOptimizationPlanner):
         self.test_batch_size = config['test_batch_size']
         self.learning_rate = config['learning_rate']
         self.regularization_rate = config['regularization_rate']
-        self.logdir = config.get('logdir')
 
     def build(self, policy: DeepReactivePolicy,
                     loss: str,
@@ -123,7 +122,7 @@ class MinimaxOptimizationPlanner(PolicyOptimizationPlanner):
                     log_prob = tf.reduce_mean(log_prob_per_batch)
                     self.regularization_loss.append(log_prob)
 
-            self.regularization_loss = sum(self.regularization_loss)
+            self.regularization_loss = -sum(self.regularization_loss)
 
     def _build_optimizer_ops(self):
         with tf.name_scope('optimizer'):
@@ -188,6 +187,9 @@ class MinimaxOptimizationPlanner(PolicyOptimizationPlanner):
             global_step = 0
             for outter_step in range(outter_epochs):
 
+                for noise_var in self.noise_variables:
+                    sess.run(noise_var.initializer)
+
                 for inner_step in range(inner_epochs):
                     _, loss_ = sess.run([self.inner_train_op, self.loss])
                     global_step += 1
@@ -213,6 +215,9 @@ class MinimaxOptimizationPlanner(PolicyOptimizationPlanner):
                 if test_avg_total_reward_ > reward:
                     reward = test_avg_total_reward_
                     rewards.append((outter_step, test_avg_total_reward_))
+
+                    if self.output:
+                        ckpt = self.policy.save(sess, self.output)
 
             return rewards
 

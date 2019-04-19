@@ -43,6 +43,9 @@ class PolicyOptimizationPlanner(metaclass=abc.ABCMeta):
         self.compiler = compiler
         self.config = config
 
+        self.logdir = config.get('logdir')
+        self.output = config.get('output')
+
     @abc.abstractmethod
     def build(self, policy: DeepReactivePolicy,
                     loss: str,
@@ -85,7 +88,7 @@ class PolicyOptimizationPlanner(metaclass=abc.ABCMeta):
         Returns:
             :obj:`tfmdp.policy.drpOptimizationPlanner`: A planner object.
         '''
-        config = json.loads(json_string)
+        config = json.loads(json_config)
         return cls(compiler, config)
 
     @abc.abstractmethod
