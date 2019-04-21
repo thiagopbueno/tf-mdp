@@ -16,6 +16,8 @@
 
 from rddl2tf.fluent import TensorFluent
 
+from tfmdp.train.initializers import initializers
+
 import numpy as np
 import tensorflow as tf
 from typing import List, Optional, Sequence, Tuple, Union
@@ -37,8 +39,10 @@ def to_tensor(fluents: Sequence[TensorFluent]) -> Sequence[tf.Tensor]:
 
 def get_noise_variables(noise_shapes: NoiseShape,
                         batch_size: int,
-                        horizon: Optional[int] = None) -> Noise:
+                        horizon: Optional[int] = None,
+                        initializer: Optional[str] = 'glorot') -> Noise:
     noise_variables = []
+    initializer = initializers[initializer]
 
     for name, shapes in noise_shapes:
 
@@ -51,7 +55,9 @@ def get_noise_variables(noise_shapes: NoiseShape,
             with tf.name_scope(name_scope):
                 for i, (dist, shape) in enumerate(shapes):
                     shape = [batch_size, horizon, *shape]
-                    xi = tf.get_variable('noise_{}_{}'.format(i, dist.name), shape=shape, dtype=tf.float32)
+                    xi = tf.get_variable('noise_{}_{}'.format(i, dist.name),
+                                         shape=shape, dtype=tf.float32,
+                                         initializer=initializer())
                     noises.append(xi)
 
             noise_variables.append((name, noises))
