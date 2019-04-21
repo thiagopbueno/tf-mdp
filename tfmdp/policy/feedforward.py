@@ -101,15 +101,19 @@ class FeedforwardPolicy(DeepReactivePolicy):
             with tf.variable_scope('policy', reuse=tf.AUTO_REUSE):
 
                 # input layer
-                input_layer = self._input_layer(state)
+                with tf.variable_scope('input_layer'):
+                    input_layer = self._input_layer(state)
+                    input_layer = tf.concat([input_layer, timestep], axis=1)
 
                 # hidden layers
-                h = input_layer
-                for layer in self._hidden_layers:
-                    h = layer(h)
+                with tf.variable_scope('hidden_layers'):
+                    h = input_layer
+                    for layer in self._hidden_layers:
+                        h = layer(h)
 
                 # output layer
-                action_fluents = self.compiler.rddl.domain.action_fluent_ordering
-                action_bounds = self.compiler.compile_action_bound_constraints(state)
-                action_bounds = [action_bounds[fluent_name] for fluent_name in action_fluents]
-                return self._output_layer(h, action_bounds=action_bounds)
+                with tf.variable_scope('output_layer'):
+                    action_fluents = self.compiler.rddl.domain.action_fluent_ordering
+                    action_bounds = self.compiler.compile_action_bound_constraints(state)
+                    action_bounds = [action_bounds[fluent_name] for fluent_name in action_fluents]
+                    return self._output_layer(h, action_bounds=action_bounds)

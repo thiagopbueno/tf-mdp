@@ -54,6 +54,12 @@ class TestFeedforwardPolicy(unittest.TestCase):
         cls.policy = FeedforwardPolicy(cls.compiler, cls.config)
         cls.policy.build()
 
+        with cls.compiler.graph.as_default():
+            # timestep
+            cls.timestep = tf.constant(cls.horizon, dtype=tf.float32)
+            cls.timestep = tf.expand_dims(cls.timestep, -1)
+            cls.timestep = tf.stack([cls.timestep] * cls.batch_size)
+
     def test_name(self):
         params_string = utils.get_params_string(self.policy.config)
         self.assertEqual(self.policy.name, 'drp-ff-{}'.format(params_string))
@@ -80,7 +86,7 @@ class TestFeedforwardPolicy(unittest.TestCase):
         self.assertIsInstance(self.policy._output_layer, ActionLayer)
 
     def test_call(self):
-        action1 = self.policy(self.initial_state, self.horizon)
+        action1 = self.policy(self.initial_state, self.timestep)
         with self.policy.graph.as_default():
             policy_vars1 = tf.trainable_variables()
         self.assertEqual(len(policy_vars1), len(self.policy.trainable_variables))
@@ -91,7 +97,7 @@ class TestFeedforwardPolicy(unittest.TestCase):
             self.assertEqual(default_action_fluent.dtype, action_fluent.dtype)
             self.assertEqual(default_action_fluent.shape, action_fluent.shape)
 
-        action2 = self.policy(self.initial_state, self.horizon)
+        action2 = self.policy(self.initial_state, self.timestep)
         with self.policy.graph.as_default():
             policy_vars2 = tf.trainable_variables()
         self.assertEqual(len(policy_vars2), len(self.policy.trainable_variables))
