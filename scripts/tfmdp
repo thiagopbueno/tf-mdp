@@ -67,6 +67,11 @@ def parse_args():
         action='store_true', default=False,
         help='input layer normalization flag'
     )
+    policy_group.add_argument(
+        '--stationary',
+        action='store_true', default=False,
+        help='stationary flag (if True policy ignores timestep)'
+    )
 
     optimization_group = parser.add_argument_group('Optimization')
     optimization_group.add_argument(
@@ -175,9 +180,25 @@ def parse_args():
         help='optimizer learning rate (default=0.0001)'
     )
     minimax_hyperparameters_group.add_argument(
-        '--noise', dest='regularization_rate',
-        type=float, default=10,
-        help='Noise log prob regularization rate (default=10)'
+        '--regularization-rate',
+        type=float, default=0.001,
+        help='Noise log prob regularization rate (default=0.001)'
+    )
+    minimax_hyperparameters_group.add_argument(
+        '--noise-initializer',
+        choices=['ones', 'zeros', 'glorot', 'random_normal', 'random_uniform', 'truncated_normal'],
+        default='glorot',
+        help='Noise variables initializer (default=glorot_uniform)'
+    )
+    minimax_hyperparameters_group.add_argument(
+        '--loss-rate', dest='loss_rate',
+        type=float,
+        help='Loss rate parameter (alpha)'
+    )
+    minimax_hyperparameters_group.add_argument(
+        '--loss-schedule', action='store_true',
+        default=False,
+        help='Set loss rate schedule (default=False)'
     )
 
     return command_parser.parse_args()
@@ -189,21 +210,9 @@ def print_parameters(args):
         print()
         print('Running tf-mdp v{} ...'.format(tfmdp.__version__))
         print()
-        print('>> RDDL:   {}'.format(args.rddl))
-        print('>> logdir: {}'.format(args.logdir))
-        print()
-        print('>> Deep Reactive Policy:')
-        print('layers = [{}]'.format(','.join(args.layers)))
-        print('activation = {}'.format(args.activation))
-        print('input  layer norm = {}'.format(args.input_layer_norm))
-        print()
-        print('>> Optimization:')
-        print('optimizer     = {}'.format(args.optimizer))
-        print('loss function = {}'.format(args.loss_fn))
-        print('learning rate = {}'.format(args.learning_rate))
-        print('batch size    = {}'.format(args.batch_size))
-        print('horizon       = {}'.format(args.horizon))
-        print('epochs        = {}'.format(args.epochs))
+        print('Parameters:')
+        for arg in sorted(vars(args)):
+             print('- {}: {}'.format(arg, getattr(args, arg)))
         print()
 
 
@@ -218,7 +227,8 @@ def build_policy(compiler, args):
     config = {
         'layers': args.layers,
         'activation': args.activation,
-        'input_layer_norm': args.input_layer_norm
+        'input_layer_norm': args.input_layer_norm,
+        'stationary': args.stationary
     }
     policy = FeedforwardPolicy(compiler, config)
     policy.build()
@@ -249,6 +259,9 @@ def minimax(compiler, policy, args):
         'inner_learning_rate': args.inner_learning_rate,
         'outter_learning_rate': args.outter_learning_rate,
         'regularization_rate': args.regularization_rate,
+        'noise_initializer': args.noise_initializer,
+        'loss_rate': args.loss_rate,
+        'loss_schedule': args.loss_schedule,
         'logdir': args.logdir,
         'output': args.output
     }
@@ -288,10 +301,10 @@ if __name__ == '__main__':
     print('Done in {:.6f} sec.'.format(uptime))
     print()
 
+    report_performance(rewards, args.horizon)
+
     if args.output:
         drp.save_config(args.output)
-
-    report_performance(rewards, args.horizon)
 
     if args.logdir:
         print('tensorboard --logdir {}\n'.format(args.logdir))
