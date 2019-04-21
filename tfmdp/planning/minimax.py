@@ -59,7 +59,8 @@ class MinimaxOptimizationPlanner(PolicyOptimizationPlanner):
         self.horizon = config['horizon']
         self.train_batch_size = config['train_batch_size']
         self.test_batch_size = config['test_batch_size']
-        self.learning_rate = config['learning_rate']
+        self.inner_learning_rate = config['inner_learning_rate']
+        self.outter_learning_rate = config['outter_learning_rate']
         self.regularization_rate = config['regularization_rate']
 
     def build(self, policy: DeepReactivePolicy,
@@ -126,17 +127,18 @@ class MinimaxOptimizationPlanner(PolicyOptimizationPlanner):
 
     def _build_optimizer_ops(self):
         with tf.name_scope('optimizer'):
-            self.optimizer = self.optimizer(self.learning_rate)
 
             with tf.name_scope('outter'):
+                self.outter_optimizer = self.optimizer(self.outter_learning_rate)
                 self.policy_variables = self.policy.trainable_variables
                 self.outter_loss = self.loss
-                self.outter_train_op = self.optimizer.minimize(self.outter_loss, var_list=self.policy_variables)
+                self.outter_train_op = self.outter_optimizer.minimize(self.outter_loss, var_list=self.policy_variables)
 
             with tf.name_scope('inner'):
+                self.inner_optimizer = self.optimizer(self.inner_learning_rate)
                 self.noise_variables = self.train_model.trainable_variables
                 self.inner_loss = -self.loss + self.regularization_rate * self.regularization_loss
-                self.inner_train_op = self.optimizer.minimize(self.inner_loss, var_list=self.noise_variables)
+                self.inner_train_op = self.inner_optimizer.minimize(self.inner_loss, var_list=self.noise_variables)
 
     def _build_summary_ops(self):
         if self.logdir is None:

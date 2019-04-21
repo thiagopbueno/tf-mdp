@@ -51,7 +51,8 @@ class TestMinimaxOptimizationPlanner(unittest.TestCase):
             'test_batch_size': cls.test_batch_size,
             'train_batch_size': cls.train_batch_size,
             'horizon': cls.horizon,
-            'learning_rate': cls.learning_rate,
+            'inner_learning_rate': cls.learning_rate,
+            'outter_learning_rate': cls.learning_rate,
             'regularization_rate': cls.regularization_rate
         }
         cls.planner = MinimaxOptimizationPlanner(cls.compiler, cls.config)
@@ -60,7 +61,8 @@ class TestMinimaxOptimizationPlanner(unittest.TestCase):
     def test_build(self):
         self.assertIsInstance(self.planner.train_model, ReparameterizationSampling)
         self.assertIsInstance(self.planner.test_model, MonteCarloSampling)
-        self.assertIsInstance(self.planner.optimizer, optimizers['RMSProp'])
+        self.assertIsInstance(self.planner.inner_optimizer, optimizers['RMSProp'])
+        self.assertIsInstance(self.planner.outter_optimizer, optimizers['RMSProp'])
 
         noise_variables = self.planner.noise_variables
         policy_variables = self.planner.policy_variables
