@@ -81,11 +81,6 @@ def parse_args():
         default='linear',
         help='loss function (default=linear)'
     )
-    optimization_group.add_argument(
-        '-lr', '--learning-rate',
-        type=float, default=0.001,
-        help='optimizer learning rate (default=0.001)'
-    )
 
     command_parser = argparse.ArgumentParser(description=description, usage=usage, parents=[parser])
 
@@ -121,6 +116,11 @@ def parse_args():
         '-e', '--epochs',
         type=int, default=200,
         help='number of training epochs (default=200)'
+    )
+    montecarlo_hyperparameters_group.add_argument(
+        '-lr', '--learning-rate',
+        type=float, default=0.0001,
+        help='optimizer learning rate (default=0.0001)'
     )
 
     minimax_description = 'Robust trajectory sampling with stochastic reparameterization'
@@ -165,9 +165,19 @@ def parse_args():
         help='number of training epochs for outter optimization level (default=200)'
     )
     minimax_hyperparameters_group.add_argument(
+        '-ilr', '--inner-learning-rate',
+        type=float, default=0.0001,
+        help='optimizer learning rate (default=0.0001)'
+    )
+    minimax_hyperparameters_group.add_argument(
+        '-olr', '--outter-learning-rate',
+        type=float, default=0.0001,
+        help='optimizer learning rate (default=0.0001)'
+    )
+    minimax_hyperparameters_group.add_argument(
         '--noise', dest='regularization_rate',
-        type=float, default=0.1,
-        help='Noise log prob regularization rate (default=0.1)'
+        type=float, default=10,
+        help='Noise log prob regularization rate (default=10)'
     )
 
     return command_parser.parse_args()
@@ -236,7 +246,8 @@ def minimax(compiler, policy, args):
         'train_batch_size': args.train_batch_size,
         'test_batch_size': args.test_batch_size,
         'horizon': args.horizon,
-        'learning_rate': args.learning_rate,
+        'inner_learning_rate': args.inner_learning_rate,
+        'outter_learning_rate': args.outter_learning_rate,
         'regularization_rate': args.regularization_rate,
         'logdir': args.logdir,
         'output': args.output
