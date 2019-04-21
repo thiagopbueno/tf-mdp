@@ -88,19 +88,28 @@ class PathwiseOptimizationPlanner(PolicyOptimizationPlanner):
     def _build_optimizer_ops(self):
         with tf.name_scope('optimizer'):
             self.optimizer = self.optimizer(self.learning_rate)
-            self.train_op = self.optimizer.minimize(self.loss)
+            self.grads_and_vars = self.optimizer.compute_gradients(self.loss)
+            self.train_op = self.optimizer.apply_gradients(self.grads_and_vars)
 
     def _build_summary_ops(self):
         if self.logdir is None:
             return
 
         with tf.name_scope('summary'):
+            # rewards
             tf.summary.histogram('total_reward', self.total_reward)
             tf.summary.scalar('avg_total_reward', self.avg_total_reward)
             tf.summary.scalar('min_total_reward', self.min_total_reward)
+
+            # loss
             tf.summary.scalar('loss', self.loss)
-            for policy_var in self.policy.trainable_variables:
-                tf.summary.histogram(policy_var.name, policy_var)
+
+            # gradients and variables
+            for (grad, var) in self.grads_and_vars:
+                tf.summary.histogram(var.name, var)
+                tf.summary.histogram('{}_grad'.format(var.name), grad)
+                tf.summary.scalar('{}_grad_norm'.format(var.name), tf.norm(grad))
+
             self.summary = tf.summary.merge_all()
 
     def run(self, epochs: int,

@@ -62,6 +62,8 @@ class MinimaxOptimizationPlanner(PolicyOptimizationPlanner):
         self.inner_learning_rate = config['inner_learning_rate']
         self.outter_learning_rate = config['outter_learning_rate']
         self.regularization_rate = config['regularization_rate']
+        self.schedule = config.get('loss_schedule')
+        self.loss_rate = config.get('loss_rate')
 
     def build(self, policy: DeepReactivePolicy,
                     loss: str,
@@ -80,8 +82,8 @@ class MinimaxOptimizationPlanner(PolicyOptimizationPlanner):
         with self.compiler.graph.as_default():
             self._build_test_ops()
             self._build_train_ops()
-            self._build_loss_ops()
             self._build_regularization_loss_ops()
+            self._build_loss_ops()
             self._build_optimizer_ops()
             self._build_summary_ops()
 
@@ -100,11 +102,23 @@ class MinimaxOptimizationPlanner(PolicyOptimizationPlanner):
             self.train_model = ReparameterizationSampling(self.compiler, config={})
             self.train_model.build(self.policy)
             _, _, self.train_total_reward = self.train_model(self.initial_state, self.horizon)
+            self.train_avg_total_reward = tf.reduce_mean(self.train_total_reward, name='train_avg_total_reward')
+            self.train_min_total_reward = tf.reduce_min(self.train_total_reward, name='train_min_total_reward')
 
     def _build_loss_ops(self):
         with tf.name_scope('loss'):
-            self.train_avg_total_reward = tf.reduce_mean(self.train_total_reward, name='train_avg_total_reward')
-            self.loss = self.loss(self.train_avg_total_reward)
+            self.train_loss = self.loss(self.train_avg_total_reward)
+            self.test_loss = self.loss(self.test_avg_total_reward)
+
+            with tf.name_scope('inner_loss'):
+                self.inner_loss = -self.train_loss + self.regularization_rate * self.regularization_loss
+
+            with tf.name_scope('outter_loss'):
+                if self.loss_rate is None:
+                    self.outter_loss = self.train_loss
+                else:
+                    self.outter_loss = (1 - self.loss_rate) * self.test_loss + \
+                                       self.loss_rate * self.train_loss
 
     def _build_regularization_loss_ops(self):
         with tf.name_scope('regularization'):
@@ -131,14 +145,14 @@ class MinimaxOptimizationPlanner(PolicyOptimizationPlanner):
             with tf.name_scope('outter'):
                 self.outter_optimizer = self.optimizer(self.outter_learning_rate)
                 self.policy_variables = self.policy.trainable_variables
-                self.outter_loss = self.loss
-                self.outter_train_op = self.outter_optimizer.minimize(self.outter_loss, var_list=self.policy_variables)
+                self.outter_grads_and_vars = self.outter_optimizer.compute_gradients(self.outter_loss, var_list=self.policy_variables)
+                self.outter_train_op = self.outter_optimizer.apply_gradients(self.outter_grads_and_vars)
 
             with tf.name_scope('inner'):
                 self.inner_optimizer = self.optimizer(self.inner_learning_rate)
                 self.noise_variables = self.train_model.trainable_variables
-                self.inner_loss = -self.loss + self.regularization_rate * self.regularization_loss
-                self.inner_train_op = self.inner_optimizer.minimize(self.inner_loss, var_list=self.noise_variables)
+                self.inner_grads_and_vars = self.inner_optimizer.compute_gradients(self.inner_loss, var_list=self.noise_variables)
+                self.inner_train_op = self.inner_optimizer.apply_gradients(self.inner_grads_and_vars)
 
     def _build_summary_ops(self):
         if self.logdir is None:
@@ -151,14 +165,23 @@ class MinimaxOptimizationPlanner(PolicyOptimizationPlanner):
             tf.summary.scalar('test_min_total_reward', self.test_min_total_reward)
 
             # train
-            tf.summary.scalar('loss', self.loss)
+            tf.summary.scalar('train_loss', self.train_loss)
+            tf.summary.scalar('test_loss', self.test_loss)
             tf.summary.scalar('regularization_loss', self.regularization_loss)
+            tf.summary.scalar('self.inner_loss', self.inner_loss)
+            tf.summary.scalar('self.outter_loss', self.outter_loss)
 
-            # trainable variables
-            for noise_var in self.noise_variables:
-                tf.summary.histogram(noise_var.name, noise_var)
-            for policy_var in self.policy_variables:
-                tf.summary.histogram(policy_var.name, policy_var)
+            # Noise gradients and variables
+            for (grad, var) in self.inner_grads_and_vars:
+                tf.summary.histogram(var.name, var)
+                tf.summary.histogram(grad.name, grad)
+                tf.summary.scalar('{}_norm'.format(grad.name), tf.norm(grad))
+
+            # Policy gradients and variables
+            for (grad, var) in self.outter_grads_and_vars:
+                tf.summary.histogram(var.name, var)
+                tf.summary.histogram(grad.name, grad)
+                tf.summary.scalar('{}_norm'.format(grad.name), tf.norm(grad))
 
             self.summary = tf.summary.merge_all()
 
@@ -193,7 +216,8 @@ class MinimaxOptimizationPlanner(PolicyOptimizationPlanner):
                     sess.run(noise_var.initializer)
 
                 for inner_step in range(inner_epochs):
-                    _, loss_ = sess.run([self.inner_train_op, self.loss])
+                    _ = sess.run(self.inner_train_op)
+                    train_loss_, regularization_loss_ = sess.run([self.train_loss, self.regularization_loss])
                     global_step += 1
 
                     if self.logdir:
@@ -201,9 +225,11 @@ class MinimaxOptimizationPlanner(PolicyOptimizationPlanner):
                         writer.add_summary(summary_, global_step)
 
                     if show_progress:
-                        print('(inner)  Epoch {0:5}: loss = {1:3.6f}\r'.format(inner_step, loss_), end='')
+                        print('(inner)  Epoch {:5}: loss = {:3.4f}, reg loss = {:3.4f}\r'.format(
+                            inner_step, train_loss_, regularization_loss_), end='')
 
-                _, loss_ = sess.run([self.outter_train_op, self.loss])
+                _ = sess.run(self.outter_train_op)
+                train_loss_, test_loss_ = sess.run([self.train_loss, self.test_loss])
                 global_step += 1
 
                 if self.logdir:
@@ -211,7 +237,7 @@ class MinimaxOptimizationPlanner(PolicyOptimizationPlanner):
                     writer.add_summary(summary_, global_step)
 
                 if show_progress:
-                    print('\n(outter) Epoch {0:5}: loss = {1:3.6f}'.format(outter_step, loss_))
+                    print('\n(outter) Epoch {:5}: train_loss = {:3.4f}, test_loss = {:3.4f}'.format(outter_step, train_loss_, test_loss_))
 
                 test_avg_total_reward_ = sess.run(self.test_avg_total_reward)
                 if test_avg_total_reward_ > reward:
