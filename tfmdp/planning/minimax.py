@@ -248,7 +248,3 @@ class MinimaxOptimizationPlanner(PolicyOptimizationPlanner):
                         ckpt = self.policy.save(sess, self.output)
 
             return rewards
-
-    def summary(self) -> None:
-        '''Prints a string summary of the planner.'''
-        raise NotImplementedError

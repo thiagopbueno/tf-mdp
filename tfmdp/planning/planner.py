@@ -74,7 +74,11 @@ class PolicyOptimizationPlanner(metaclass=abc.ABCMeta):
 
     def to_json(self) -> str:
         '''Returns the planner configuration parameters serialized in JSON format.'''
-        return json.dumps(self.config, sort_keys=True, indent=4)
+        json_config = {
+            'class': self.__class__.__name__,
+            'params': { **self.config }
+        }
+        return json.dumps(json_config, sort_keys=True, indent=4)
 
     @classmethod
     def from_json(cls, compiler: rddl2tf.compiler.Compiler,
@@ -91,7 +95,6 @@ class PolicyOptimizationPlanner(metaclass=abc.ABCMeta):
         config = json.loads(json_config)
         return cls(compiler, config)
 
-    @abc.abstractmethod
     def summary(self) -> None:
         '''Prints a string summary of the planner.'''
-        raise NotImplementedError
+        print(self.to_json())

@@ -142,7 +142,7 @@ class PathwiseOptimizationPlanner(PolicyOptimizationPlanner):
                     rewards.append((step, reward_))
 
                     if self.output:
-                        ckpt = self.policy.save(sess, self.output)
+                        self.policy.save(sess, self.output)
 
                 if show_progress:
                     print('Epoch {0:5}: loss = {1:3.6f}\r'.format(step, loss_), end='')
@@ -152,7 +152,3 @@ class PathwiseOptimizationPlanner(PolicyOptimizationPlanner):
                     writer.add_summary(summary_, step)
 
             return rewards
-
-    def summary(self) -> None:
-        '''Prints a string summary of the planner.'''
-        raise NotImplementedError
