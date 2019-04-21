@@ -17,6 +17,7 @@ import rddl2tf.compiler
 
 import abc
 import json
+import os
 import tensorflow as tf
 
 from typing import Dict, Optional, Sequence
@@ -107,7 +108,7 @@ class DeepReactivePolicy(metaclass=abc.ABCMeta):
         if self.saver is None:
             self.saver = tf.train.Saver(self.trainable_variables)
 
-        self._checkpoint = self.saver.save(sess, '{}/drp.ckpt'.format(path))
+        self._checkpoint = self.saver.save(sess, os.path.join(path, 'drp.ckpt'))
         return self._checkpoint
 
     def restore(self, sess: tf.Session, path: Optional[str] = None) -> None:
@@ -120,7 +121,7 @@ class DeepReactivePolicy(metaclass=abc.ABCMeta):
             path (Optional[str]): An optional path to a checkpoint directory.
         '''
         if self.saver is None:
-            self.saver = tf.train.Saver(self.trainable_variables)
+            self.saver = tf.train.Saver()
 
         if path is None:
             path = self._checkpoint
@@ -129,7 +130,7 @@ class DeepReactivePolicy(metaclass=abc.ABCMeta):
 
     def save_config(self, path: str) -> None:
         '''Serializes policy configuration json file to `path` directory.'''
-        filename = '{}/drp.config.json'.format(path)
+        filename = os.path.join(path, 'drp.config.json')
         with open(filename, 'w') as file:
             file.write(self.to_json())
 
@@ -137,7 +138,7 @@ class DeepReactivePolicy(metaclass=abc.ABCMeta):
         '''Returns the policy configuration parameters serialized in JSON format.'''
         json_config = {
             'class': self.__class__.__name__,
-            'config': { **self.config }
+            'params': { **self.config }
         }
         return json.dumps(json_config, sort_keys=True, indent=4)
 
@@ -154,7 +155,7 @@ class DeepReactivePolicy(metaclass=abc.ABCMeta):
             :obj:`tfmdp.policy.drp.DeepReactivePolicy`: A DRP object.
         '''
         config = json.loads(json_config)
-        return cls(compiler, config)
+        return cls(compiler, config['params'])
 
     def summary(self) -> None:
         '''Prints a string summary of the DRP.'''
