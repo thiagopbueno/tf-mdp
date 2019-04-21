@@ -94,7 +94,7 @@ class ActionLayer(tf.layers.Layer):
             upper = tf.stop_gradient(upper.tensor)
 
         if lower is not None and upper is not None:
-            tensor = lower + (upper - lower) * tf.sigmoid(tensor)
+            tensor = lower + (upper - lower) * tf.sigmoid(tensor / (upper - lower + 1e-10))
         elif lower is not None and upper is None:
             tensor = lower + tf.exp(tensor)
         elif lower is None and upper is not None:
