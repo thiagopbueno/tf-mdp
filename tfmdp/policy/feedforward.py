@@ -43,6 +43,8 @@ class FeedforwardPolicy(DeepReactivePolicy):
                  config: dict) -> None:
         super(FeedforwardPolicy, self).__init__(compiler, config)
 
+        self.stationary = self.config.get('stationary')
+
     @property
     def name(self) -> str:
         '''Returns the canonical DRP name.'''
@@ -103,7 +105,8 @@ class FeedforwardPolicy(DeepReactivePolicy):
                 # input layer
                 with tf.variable_scope('input_layer'):
                     input_layer = self._input_layer(state)
-                    input_layer = tf.concat([input_layer, timestep], axis=1)
+                    if not self.stationary:
+                        input_layer = tf.concat([input_layer, timestep], axis=1)
 
                 # hidden layers
                 with tf.variable_scope('hidden_layers'):
