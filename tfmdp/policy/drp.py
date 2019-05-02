@@ -95,7 +95,7 @@ class DeepReactivePolicy(metaclass=abc.ABCMeta):
         '''
         raise NotImplementedError
 
-    def save(self, sess: tf.Session, path: str) -> str:
+    def save(self, sess: tf.Session, path: str, global_step: Optional[int] = None) -> str:
         '''Serializes all DRP trainable variables into a checkpoint file.
 
         Args:
@@ -106,9 +106,9 @@ class DeepReactivePolicy(metaclass=abc.ABCMeta):
             str: The path prefix of the newly created checkpoint file.
         '''
         if self.saver is None:
-            self.saver = tf.train.Saver(self.trainable_variables)
+            self.saver = tf.train.Saver(self.trainable_variables, max_to_keep=1000)
 
-        self._checkpoint = self.saver.save(sess, os.path.join(path, 'drp.ckpt'))
+        self._checkpoint = self.saver.save(sess, os.path.join(path, 'drp.ckpt'), global_step=global_step)
         return self._checkpoint
 
     def restore(self, sess: tf.Session, path: Optional[str] = None) -> None:
@@ -140,6 +140,8 @@ class DeepReactivePolicy(metaclass=abc.ABCMeta):
             'class': self.__class__.__name__,
             'params': { **self.config }
         }
+        if self.saver:
+            json_config['checkpoints'] = self.saver.last_checkpoints
         return json.dumps(json_config, sort_keys=True, indent=4)
 
     @classmethod
