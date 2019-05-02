@@ -27,6 +27,9 @@ from tfmdp.planning.planner import PolicyOptimizationPlanner
 import sys
 import tensorflow as tf
 
+from tensorflow.python import debug as tf_debug
+
+
 from typing import Callable, Dict, List, Optional, Sequence
 
 Callback = Callable[[None],None]
@@ -49,6 +52,7 @@ class PathwiseOptimizationPlanner(PolicyOptimizationPlanner):
         self.horizon = config['horizon']
         self.batch_size = config['batch_size']
         self.learning_rate = config['learning_rate']
+        self.debug = config.get('debug', False)
 
     def build(self, policy: DeepReactivePolicy,
                     loss: str,
@@ -126,10 +130,13 @@ class PathwiseOptimizationPlanner(PolicyOptimizationPlanner):
         '''
         with tf.Session(graph=self.compiler.graph) as sess:
 
-            if self.logdir:
-                writer = tf.summary.FileWriter(self.logdir, sess.graph)
-
             sess.run(tf.global_variables_initializer())
+
+            if self.debug:
+                sess = tf_debug.LocalCLIDebugWrapperSession(sess)
+
+            if self.logdir and not self.debug:
+                writer = tf.summary.FileWriter(self.logdir, sess.graph)
 
             reward = -sys.maxsize
             rewards = []
@@ -141,13 +148,14 @@ class PathwiseOptimizationPlanner(PolicyOptimizationPlanner):
                     reward = reward_
                     rewards.append((step, reward_))
 
-                    if self.output:
+                    if self.output and not self.debug:
+                        # self.policy.save(sess, self.output, global_step=step)
                         self.policy.save(sess, self.output)
 
                 if show_progress:
                     print('Epoch {0:5}: loss = {1:3.6f}\r'.format(step, loss_), end='')
 
-                if self.logdir:
+                if self.logdir and not self.debug:
                     summary_ = sess.run(self.summary)
                     writer.add_summary(summary_, step)
 

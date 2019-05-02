@@ -25,8 +25,11 @@ from tfmdp.train.optimizers import optimizers
 # from tfmdp.train.callbacks import Callback
 from tfmdp.planning.planner import PolicyOptimizationPlanner
 
+import os
 import sys
 import tensorflow as tf
+
+from tensorflow.python import debug as tf_debug
 
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
@@ -64,6 +67,7 @@ class MinimaxOptimizationPlanner(PolicyOptimizationPlanner):
         self.regularization_rate = config['regularization_rate']
         self.schedule = config.get('loss_schedule')
         self.loss_rate = config.get('loss_rate')
+        self.debug = config.get('debug', False)
 
     def build(self, policy: DeepReactivePolicy,
                     loss: str,
@@ -200,6 +204,9 @@ class MinimaxOptimizationPlanner(PolicyOptimizationPlanner):
         outter_epochs, inner_epochs = epochs
 
         with tf.Session(graph=self.compiler.graph) as sess:
+
+            if self.debug:
+                sess = tf_debug.LocalCLIDebugWrapperSession(sess)
 
             if self.logdir:
                 writer = tf.summary.FileWriter(self.logdir, sess.graph)

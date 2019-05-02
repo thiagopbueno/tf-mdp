@@ -39,6 +39,11 @@ def parse_args():
         help='log directory for data summaries'
     )
     parser.add_argument(
+        '--debug',
+        action='store_true', default=False,
+        help='debug flag'
+    )
+    parser.add_argument(
         '--version',
         action='version',
         version=tfmdp.__version__
@@ -242,7 +247,8 @@ def montecarlo(compiler, policy, args):
         'horizon': args.horizon,
         'learning_rate': args.learning_rate,
         'logdir': args.logdir,
-        'output': args.output
+        'output': args.output,
+        'debug': args.debug
     }
     planner = PathwiseOptimizationPlanner(compiler, config)
     planner.build(policy, loss=args.loss_fn, optimizer=args.optimizer)
@@ -263,7 +269,8 @@ def minimax(compiler, policy, args):
         'loss_rate': args.loss_rate,
         'loss_schedule': args.loss_schedule,
         'logdir': args.logdir,
-        'output': args.output
+        'output': args.output,
+        'debug': args.debug
     }
     planner = MinimaxOptimizationPlanner(compiler, config)
     planner.build(policy, loss=args.loss_fn, optimizer=args.optimizer)
