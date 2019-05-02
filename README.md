@@ -38,50 +38,47 @@ Please refer to each project documentation for further details.
 
 ```text
 $ tfmdp --help
-
-usage: tfmdp [-h] [-l LAYERS [LAYERS ...]]
-             [-a {none,sigmoid,tanh,relu,relu6,crelu,elu,selu,softplus,softsign}]
-             [-iln] [-b BATCH_SIZE] [-hr HORIZON] [-e EPOCHS]
-             [-lr LEARNING_RATE]
-             [-opt {Adadelta,Adagrad,Adam,GradientDescent,ProximalGradientDescent,ProximalAdagrad,RMSProp}]
-             [-lfn {linear,mse}] [-ld LOGDIR] [-v]
-             rddl
+usage: tfmdp <planner> <rddl> <policy> <optimization> [-h] [--version]
 
 Probabilistic planning in continuous state-action MDPs using TensorFlow.
 
 positional arguments:
-  rddl                  RDDL file or rddlgym domain id
+  {montecarlo,minimax}  Planners
+    montecarlo          Monte Carlo trajectory sampling with pathwise
+                        derivatives (--help for more options)
+    minimax             Robust trajectory sampling with stochastic
+                        reparameterization (--help for more options)
 
 optional arguments:
   -h, --help            show this help message and exit
-  -l LAYERS [LAYERS ...], --layers LAYERS [LAYERS ...]
-                        number of units in each hidden layer in policy network
-  -a {none,sigmoid,tanh,relu,relu6,crelu,elu,selu,softplus,softsign}, --activation {none,sigmoid,tanh,relu,relu6,crelu,elu,selu,softplus,softsign}
-                        activation function for hidden layers in policy
-                        network
+  -o OUTPUT, --output OUTPUT
+                        output directory for policy serialization
+  -ld LOGDIR, --logdir LOGDIR
+                        log directory for data summaries
+  --debug               debug flag
+  --version             show program's version number and exit
+  -v, --verbose         verbosity mode
+
+Deep Reactive Policy:
+  -l LAYERS [LAYERS ...]
+                        number of units in each hidden layer
+  -a {none,sigmoid,tanh,relu,relu6,crelu,elu,selu,softplus,softsign}
+                        activation function for hidden layers
   -iln, --input-layer-norm
                         input layer normalization flag
-  -b BATCH_SIZE, --batch-size BATCH_SIZE
-                        number of trajectories in a batch (default=256)
-  -hr HORIZON, --horizon HORIZON
-                        number of timesteps (default=40)
-  -e EPOCHS, --epochs EPOCHS
-                        number of timesteps (default=200)
-  -lr LEARNING_RATE, --learning-rate LEARNING_RATE
-                        optimizer learning rate (default=0.001)
-  -opt {Adadelta,Adagrad,Adam,GradientDescent,ProximalGradientDescent,ProximalAdagrad,RMSProp}, --optimizer {Adadelta,Adagrad,Adam,GradientDescent,ProximalGradientDescent,ProximalAdagrad,RMSProp}
+  --stationary          stationary flag (if True policy ignores timestep)
+
+Optimization:
+  --optimizer {Adadelta,Adagrad,Adam,GradientDescent,ProximalGradientDescent,ProximalAdagrad,RMSProp}
                         loss optimizer (default=RMSProp)
   -lfn {linear,mse}, --loss-fn {linear,mse}
                         loss function (default=linear)
-  -ld LOGDIR, --logdir LOGDIR
-                        log directory for data summaries (default=/tmp/tfmdp)
-  -v, --verbose         verbosity mode
 ```
 
 # Examples
 
 ```text
-$ tfmdp Reservoir-20 -l 2048 -iln -a elu -b 256 -hr 40 -e 200 -lr 0.001 -lfn mse -v
+$ tfmdp montecarlo Reservoir-20 -l 2048 -iln -a elu -b 256 -hr 40 -e 200 -lr 0.001 -lfn mse -v
 
 Running tf-mdp v0.5.2 ...
 
@@ -116,7 +113,7 @@ total reward = -3637.6018, reward per timestep = -90.9400
 ```
 
 ```text
-$ tfmdp HVAC-3 -l 256 128 64 32 -iln -a elu -b 256 -hr 40 -e 200 -lr 0.0001 -lfn mse -v
+$ tfmdp montecarlo HVAC-3 -l 256 128 64 32 -iln -a elu -b 256 -hr 40 -e 200 -lr 0.0001 -lfn mse -v
 
 Running tf-mdp v0.5.2 ...
 
@@ -151,7 +148,7 @@ total reward = -305691.7500, reward per timestep = -7642.2937
 ```
 
 ```text
-$ tfmdp Navigation-v2 -l 256 128 64 32 -a elu -b 128 -hr 20 -e 200 -lr 0.001 -lfn mse -v
+$ tfmdp montecarlo Navigation-v2 -l 256 128 64 32 -a elu -b 128 -hr 20 -e 200 -lr 0.001 -lfn mse -v
 
 Running tf-mdp v0.5.2 ...
 
