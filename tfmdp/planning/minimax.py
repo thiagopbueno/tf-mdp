@@ -139,7 +139,8 @@ class MinimaxOptimizationPlanner(PolicyOptimizationPlanner):
             self.test_loss = self.loss(self.test_avg_total_reward)
 
             with tf.name_scope('inner_loss'):
-                self.inner_loss = -self.train_loss + self.regularization_rate * self.regularization_loss
+                # self.inner_loss = -self.train_loss + self.regularization_rate * self.regularization_loss
+                self.inner_loss = -self.train_loss # squased noise
 
             with tf.name_scope('outter_loss'):
                 if self.loss_rate is None:
@@ -196,14 +197,18 @@ class MinimaxOptimizationPlanner(PolicyOptimizationPlanner):
             tf.summary.scalar('train_loss', self.train_loss)
             tf.summary.scalar('test_loss', self.test_loss)
             tf.summary.scalar('regularization_loss', self.regularization_loss)
-            tf.summary.scalar('self.inner_loss', self.inner_loss)
-            tf.summary.scalar('self.outter_loss', self.outter_loss)
+            tf.summary.scalar('inner_loss', self.inner_loss)
+            tf.summary.scalar('outter_loss', self.outter_loss)
 
             # Noise gradients and variables
             for (grad, var) in self.inner_grads_and_vars:
                 tf.summary.histogram(var.name, var)
                 tf.summary.histogram(grad.name, grad)
                 tf.summary.scalar('{}_norm'.format(grad.name), tf.norm(grad))
+
+                squashed_noise = tf.multiply(2.0, tf.tanh(var / 2.0), name='squashed_noise')
+                tf.summary.histogram(squashed_noise.name, squashed_noise)
+                tf.summary.scalar('{}_norm'.format(squashed_noise.name), tf.norm(squashed_noise))
 
             # Policy gradients and variables
             for (grad, var) in self.outter_grads_and_vars:

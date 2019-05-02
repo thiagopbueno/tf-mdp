@@ -35,7 +35,7 @@ class TestPathwiseOptimizationPlanner(unittest.TestCase):
         cls.learning_rate = 0.001
 
         # rddl
-        cls.compiler = rddlgym.make('Reservoir-8', rddlgym.SCG)
+        cls.compiler = rddlgym.make('Navigation-v2', rddlgym.SCG)
         cls.compiler.batch_mode_on()
 
         # policy
