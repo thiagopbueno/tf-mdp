@@ -68,9 +68,18 @@ class PathwiseOptimizationPlanner(PolicyOptimizationPlanner):
         self.loss = loss_fn[loss]
         self.optimizer = optimizers[optimizer]
 
-        self.initial_state = self.compiler.compile_initial_state(self.batch_size)
-
         with self.compiler.graph.as_default():
+            self.initial_state = self.compiler.compile_initial_state(self.batch_size)
+
+            # initial state distribution
+            initial_state_noise = []
+            for _ in self.initial_state:
+                noise_x = tf.truncated_normal((self.batch_size,), stddev=0.75, name='noise_x')
+                noise_y = tf.truncated_normal((self.batch_size,), stddev=3.0, name='noise_y')
+                noise = tf.stack([noise_x, noise_y], axis=1)
+                initial_state_noise.append(noise)
+            self.initial_state = tuple(tensor + noise for tensor, noise in zip(self.initial_state, initial_state_noise))
+
             self._build_model_ops()
             self._build_loss_ops()
             self._build_optimizer_ops()

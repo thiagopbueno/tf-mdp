@@ -94,6 +94,16 @@ class MinimaxOptimizationPlanner(PolicyOptimizationPlanner):
     def _build_test_ops(self):
         with tf.name_scope('test'):
             self.test_initial_state = self.compiler.compile_initial_state(self.test_batch_size)
+
+            # initial state distribution
+            initial_state_noise = []
+            for _ in self.test_initial_state:
+                noise_x = tf.truncated_normal((self.test_batch_size,), stddev=0.75, name='noise_x')
+                noise_y = tf.truncated_normal((self.test_batch_size,), stddev=3.0, name='noise_y')
+                noise = tf.stack([noise_x, noise_y], axis=1)
+                initial_state_noise.append(noise)
+            self.test_initial_state = tuple(tensor + noise for tensor, noise in zip(self.test_initial_state, initial_state_noise))
+
             self.test_model = MonteCarloSampling(self.compiler)
             self.test_model.build(self.policy)
             _, _, self.test_total_reward = self.test_model(self.test_initial_state, self.horizon)
@@ -103,9 +113,23 @@ class MinimaxOptimizationPlanner(PolicyOptimizationPlanner):
     def _build_train_ops(self):
         with tf.name_scope('model'):
             self.initial_state = self.compiler.compile_initial_state(self.train_batch_size)
+
+            # initial state distribution
+            initial_state_noise = []
+            for _ in self.initial_state:
+                noise_x = tf.truncated_normal((self.train_batch_size,), stddev=0.75, name='noise_x')
+                noise_y = tf.truncated_normal((self.train_batch_size,), stddev=3.0, name='noise_y')
+                noise = tf.stack([noise_x, noise_y], axis=1)
+                initial_state_noise.append(noise)
+            self.initial_state = tuple(tensor + noise for tensor, noise in zip(self.initial_state, initial_state_noise))
+
+            self.initial_state_placeholder = tuple(tf.placeholder(tf.float32, shape=tensor.shape)
+                                                   for tensor in self.initial_state)
+
             self.train_model = ReparameterizationSampling(self.compiler, config={})
             self.train_model.build(self.policy)
-            _, _, self.train_total_reward = self.train_model(self.initial_state, self.horizon)
+            # _, _, self.train_total_reward = self.train_model(self.initial_state, self.horizon)
+            _, _, self.train_total_reward = self.train_model(self.initial_state_placeholder, self.horizon)
             self.train_avg_total_reward = tf.reduce_mean(self.train_total_reward, name='train_avg_total_reward')
             self.train_min_total_reward = tf.reduce_min(self.train_total_reward, name='train_min_total_reward')
 
@@ -219,28 +243,33 @@ class MinimaxOptimizationPlanner(PolicyOptimizationPlanner):
             global_step = 0
             for outter_step in range(outter_epochs):
 
+                feed_dict = {
+                    self.initial_state_placeholder: sess.run(self.initial_state)
+                }
+
                 for noise_var in self.noise_variables:
                     sess.run(noise_var.initializer)
 
                 for inner_step in range(inner_epochs):
-                    _ = sess.run(self.inner_train_op)
-                    train_loss_, regularization_loss_ = sess.run([self.train_loss, self.regularization_loss])
+                    _ = sess.run(self.inner_train_op, feed_dict=feed_dict)
+                    train_loss_, regularization_loss_ = sess.run([self.train_loss, self.regularization_loss],
+                                                                 feed_dict=feed_dict)
                     global_step += 1
 
                     if self.logdir:
-                        summary_ = sess.run(self.summary)
+                        summary_ = sess.run(self.summary, feed_dict=feed_dict)
                         writer.add_summary(summary_, global_step)
 
                     if show_progress:
                         print('(inner)  Epoch {:5}: loss = {:3.4f}, reg loss = {:3.4f}\r'.format(
                             inner_step, train_loss_, regularization_loss_), end='')
 
-                _ = sess.run(self.outter_train_op)
-                train_loss_, test_loss_ = sess.run([self.train_loss, self.test_loss])
+                _ = sess.run(self.outter_train_op, feed_dict=feed_dict)
+                train_loss_, test_loss_ = sess.run([self.train_loss, self.test_loss], feed_dict=feed_dict)
                 global_step += 1
 
                 if self.logdir:
-                    summary_ = sess.run(self.summary)
+                    summary_ = sess.run(self.summary, feed_dict=feed_dict)
                     writer.add_summary(summary_, global_step)
 
                 if show_progress:
@@ -252,6 +281,11 @@ class MinimaxOptimizationPlanner(PolicyOptimizationPlanner):
                     rewards.append((outter_step, test_avg_total_reward_))
 
                     if self.output:
+                        # ckpt = self.policy.save(sess, os.path.join(self.output, 'best'), global_step=outter_step)
                         ckpt = self.policy.save(sess, self.output)
+
+                # if self.output:
+                #         ckpt = self.policy.save(sess, self.output, global_step=outter_step)
+                #         ckpt = self.policy.save(self.output)
 
             return rewards
