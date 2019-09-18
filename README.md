@@ -5,7 +5,7 @@ Probabilistic planning in continuous state-action MDPs using TensorFlow.
 **tf-mdp** is an implementation based on the paper:
 
 > Thiago P. Bueno; Leliane N. de Barros; Denis D. Mauá; Scott Sanner<br>
-> **Deep Reactive Policies for Planning in Stochastic Nonlinear Domains**<br>
+> **[Deep Reactive Policies for Planning in Stochastic Nonlinear Domains](https://aaai.org/ojs/index.php/AAAI/article/view/4744)**<br>
 > In AAAI, 2019.
 
 # Quickstart
