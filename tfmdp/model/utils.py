@@ -14,7 +14,7 @@
 # along with tf-mdp. If not, see <http://www.gnu.org/licenses/>.
 
 
-from rddl2tf.fluent import TensorFluent
+from rddl2tf.core.fluent import TensorFluent
 
 import numpy as np
 import tensorflow as tf
@@ -51,7 +51,11 @@ def get_noise_variables(noise_shapes: NoiseShape,
             with tf.name_scope(name_scope):
                 for i, (dist, shape) in enumerate(shapes):
                     shape = [batch_size, horizon, *shape]
-                    xi = tf.get_variable('noise_{}_{}'.format(i, dist.name), shape=shape, dtype=tf.float32)
+                    xi = tf.compat.v1.get_variable(
+                        'noise_{}_{}'.format(i, dist.name),
+                        shape=shape,
+                        dtype=tf.float32
+                    )
                     noises.append(xi)
 
             noise_variables.append((name, noises))

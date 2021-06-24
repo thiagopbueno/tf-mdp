@@ -13,8 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with tf-mdp. If not, see <http://www.gnu.org/licenses/>.
 
-
-import rddl2tf.compiler
+import rddl2tf
 
 from tfmdp.policy.drp import DeepReactivePolicy
 # from tfmdp.model.sequential.montecarlo import MonteCarloSampling
@@ -49,11 +48,11 @@ class MinimaxOptimizationPlanner(PolicyOptimizationPlanner):
     for both optimization levels.
 
     Args:
-        compiler (:obj:`rddl2tf.compiler.Compiler`): RDDL2TensorFlow compiler.
+        compiler (:obj:`rddl2tf.compilers.Compiler`): RDDL2TensorFlow compiler.
         config (Dict): The planner configuration parameters.
     '''
 
-    def __init__(self, compiler: rddl2tf.compiler.Compiler, config: Dict) -> None:
+    def __init__(self, compiler: rddl2tf.compilers.Compiler, config: Dict) -> None:
         super(MinimaxOptimizationPlanner, self).__init__(compiler, config)
 
         self.horizon = config['horizon']
@@ -76,7 +75,7 @@ class MinimaxOptimizationPlanner(PolicyOptimizationPlanner):
         self.loss = loss_fn[loss]
         self.optimizer = optimizers[optimizer]
 
-        self.initial_state = self.compiler.compile_initial_state(self.batch_size)
+        self.initial_state = self.compiler.initial_state()
 
         with self.compiler.graph.as_default():
             self._build_model_ops()
@@ -86,19 +85,19 @@ class MinimaxOptimizationPlanner(PolicyOptimizationPlanner):
             self._build_summary_ops()
 
     def _build_model_ops(self):
-        with tf.name_scope('model'):
+        with tf.compat.v1.name_scope('model'):
             self.model = ReparameterizationSampling(self.compiler, config={})
             self.model.build(self.policy)
             output = self.model(self.initial_state, self.horizon)
             self.trajetory, self.final_state, self.total_reward = output
 
     def _build_loss_ops(self):
-        with tf.name_scope('loss'):
+        with tf.compat.v1.name_scope('loss'):
             self.avg_total_reward = tf.reduce_mean(self.total_reward, name='avg_total_reward')
             self.loss = self.loss(self.avg_total_reward)
 
     def _build_regularization_loss_ops(self):
-        with tf.name_scope('regularization'):
+        with tf.compat.v1.name_scope('regularization'):
             self.regularization_loss = []
 
             for variables, dists in zip(self.model.noise_map, self.model.reparameterization_map):
@@ -117,30 +116,30 @@ class MinimaxOptimizationPlanner(PolicyOptimizationPlanner):
             self.regularization_loss = sum(self.regularization_loss)
 
     def _build_optimizer_ops(self):
-        with tf.name_scope('optimizer'):
+        with tf.compat.v1.name_scope('optimizer'):
             self.optimizer = self.optimizer(self.learning_rate)
 
-            with tf.name_scope('outter'):
+            with tf.compat.v1.name_scope('outter'):
                 self.policy_variables = self.policy.trainable_variables
                 self.outter_loss = self.loss
                 self.outter_train_op = self.optimizer.minimize(self.outter_loss, var_list=self.policy_variables)
 
-            with tf.name_scope('inner'):
+            with tf.compat.v1.name_scope('inner'):
                 self.noise_variables = self.model.trainable_variables
                 self.inner_loss = -self.loss + self.regularization_rate * self.regularization_loss
                 self.inner_train_op = self.optimizer.minimize(self.inner_loss, var_list=self.noise_variables)
 
     def _build_summary_ops(self):
-        with tf.name_scope('summary'):
-            tf.summary.histogram('total_reward', self.total_reward)
-            tf.summary.scalar('avg_total_reward', self.avg_total_reward)
-            tf.summary.scalar('loss', self.loss)
-            tf.summary.scalar('regularization_loss', self.regularization_loss)
+        with tf.compat.v1.name_scope('summary'):
+            tf.compat.v1.summary.histogram('total_reward', self.total_reward)
+            tf.compat.v1.summary.scalar('avg_total_reward', self.avg_total_reward)
+            tf.compat.v1.summary.scalar('loss', self.loss)
+            tf.compat.v1.summary.scalar('regularization_loss', self.regularization_loss)
             for noise_var in self.noise_variables:
-                tf.summary.histogram(noise_var.name, noise_var)
+                tf.compat.v1.summary.histogram(noise_var.name, noise_var)
             for policy_var in self.policy_variables:
-                tf.summary.histogram(policy_var.name, policy_var)
-            self.summary = tf.summary.merge_all()
+                tf.compat.v1.summary.histogram(policy_var.name, policy_var)
+            self.summary = tf.compat.v1.summary.merge_all()
 
     def run(self, epochs: Tuple[int, int],
                   callbacks: Optional[Callbacks] = None,
@@ -156,10 +155,10 @@ class MinimaxOptimizationPlanner(PolicyOptimizationPlanner):
         '''
         outter_epochs, inner_epochs = epochs
 
-        with tf.Session(graph=self.compiler.graph) as sess:
-            writer = tf.summary.FileWriter(self.logdir, sess.graph)
+        with tf.compat.v1.Session(graph=self.compiler.graph) as sess:
+            writer = tf.compat.v1.summary.FileWriter(self.logdir, sess.graph)
 
-            sess.run(tf.global_variables_initializer())
+            sess.run(tf.compat.v1.global_variables_initializer())
 
             for outter_step in range(outter_epochs):
 

@@ -35,13 +35,14 @@ class TestMonteCarloSampling(unittest.TestCase):
 
         # rddl
         cls.compiler = rddlgym.make('Reservoir-8', rddlgym.SCG)
-        cls.compiler.batch_mode_on()
+        cls.compiler.init()
+        cls.compiler.batch_size = cls.batch_size
 
         # initial state
-        cls.initial_state = cls.compiler.compile_initial_state(cls.batch_size)
+        cls.initial_state = cls.compiler.initial_state()
 
         # default action
-        cls.default_action = cls.compiler.compile_default_action(cls.batch_size)
+        cls.default_action = cls.compiler.default_action()
 
         # policy
         cls.policy = FeedforwardPolicy(cls.compiler, {'layers': [32, 32], 'activation': 'elu', 'input_layer_norm': True})

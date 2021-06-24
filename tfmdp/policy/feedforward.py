@@ -34,12 +34,12 @@ class FeedforwardPolicy(DeepReactivePolicy):
         - config['activation']: an activation function.
 
     Args:
-        compiler (:obj:`rddl2tf.compiler.Compiler`): RDDL2TensorFlow compiler.
+        compiler (:obj:`rddl2tf.compilers.Compiler`): RDDL2TensorFlow compiler.
         config (Dict): The policy configuration parameters.
     '''
 
     def __init__(self,
-                 compiler: rddl2tf.compiler.Compiler,
+                 compiler: rddl2tf.compilers.Compiler,
                  config: dict) -> None:
         super(FeedforwardPolicy, self).__init__(compiler, config)
 
@@ -60,13 +60,13 @@ class FeedforwardPolicy(DeepReactivePolicy):
     def trainable_variables(self) -> Sequence[tf.Variable]:
         '''Returns the list of trainable variables.'''
         with self.graph.as_default():
-            policy_vars = tf.trainable_variables(r'.*policy')
+            policy_vars = tf.compat.v1.trainable_variables(r'.*policy')
             return policy_vars
 
     def build(self) -> None:
         '''Create the DRP layers and trainable weights.'''
         with self.graph.as_default():
-            with tf.variable_scope('policy'):
+            with tf.compat.v1.variable_scope('policy'):
                 self._build_input_layer()
                 self._build_hidden_layers()
                 self._build_output_layer()
@@ -76,10 +76,12 @@ class FeedforwardPolicy(DeepReactivePolicy):
         self._input_layer = StateLayer(self.config['input_layer_norm'])
 
     def _build_hidden_layers(self) -> None:
-        '''Builds all hidden layers as `tf.layers.Dense` layers.'''
+        '''Builds all hidden layers as `tf.compat.v1.layers.Dense` layers.'''
         activation = activation_fn[self.config['activation']]
-        self._hidden_layers = tuple(tf.layers.Dense(units, activation=activation)
-                                    for units in self.config['layers'])
+        self._hidden_layers = tuple(
+            tf.compat.v1.layers.Dense(units, activation=activation)
+            for units in self.config['layers']
+        )
 
     def _build_output_layer(self) -> None:
         '''Builds the DRP output layer using a `tfmdp.policy.layers.action_layer.ActionLayer`.'''
@@ -98,7 +100,7 @@ class FeedforwardPolicy(DeepReactivePolicy):
             Sequence[tf.Tensor]: A tuple of action fluents.
         '''
         with self.graph.as_default():
-            with tf.variable_scope('policy', reuse=tf.AUTO_REUSE):
+            with tf.compat.v1.variable_scope('policy', reuse=tf.compat.v1.AUTO_REUSE):
 
                 # input layer
                 input_layer = self._input_layer(state)
@@ -110,6 +112,6 @@ class FeedforwardPolicy(DeepReactivePolicy):
 
                 # output layer
                 action_fluents = self.compiler.rddl.domain.action_fluent_ordering
-                action_bounds = self.compiler.compile_action_bound_constraints(state)
+                action_bounds = self.compiler.action_bound_constraints(state)
                 action_bounds = [action_bounds[fluent_name] for fluent_name in action_fluents]
                 return self._output_layer(h, action_bounds=action_bounds)

@@ -14,7 +14,7 @@
 # along with tf-mdp. If not, see <http://www.gnu.org/licenses/>.
 
 
-import rddl2tf.compiler
+import rddl2tf
 
 from tfmdp.policy.drp import DeepReactivePolicy
 from tfmdp.model.sequential.montecarlo import MonteCarloSampling
@@ -39,11 +39,11 @@ class PathwiseOptimizationPlanner(PolicyOptimizationPlanner):
     batch size, and learning rate.
 
     Args:
-        compiler (:obj:`rddl2tf.compiler.Compiler`): RDDL2TensorFlow compiler.
+        compiler (:obj:`rddl2tf.compilers.Compiler`): RDDL2TensorFlow compiler.
         config (Dict): The planner configuration parameters.
     '''
 
-    def __init__(self, compiler: rddl2tf.compiler.Compiler, config: Dict) -> None:
+    def __init__(self, compiler: rddl2tf.compilers.Compiler, config: Dict) -> None:
         super(PathwiseOptimizationPlanner, self).__init__(compiler, config)
 
         self.horizon = config['horizon']
@@ -65,7 +65,7 @@ class PathwiseOptimizationPlanner(PolicyOptimizationPlanner):
         self.loss = loss_fn[loss]
         self.optimizer = optimizers[optimizer]
 
-        self.initial_state = self.compiler.compile_initial_state(self.batch_size)
+        self.initial_state = self.compiler.initial_state()
 
         with self.compiler.graph.as_default():
             self._build_model_ops()
@@ -74,30 +74,30 @@ class PathwiseOptimizationPlanner(PolicyOptimizationPlanner):
             self._build_summary_ops()
 
     def _build_model_ops(self):
-        with tf.name_scope('model'):
+        with tf.compat.v1.name_scope('model'):
             self.model = MonteCarloSampling(self.compiler)
             self.model.build(self.policy)
             output = self.model(self.initial_state, self.horizon)
             self.trajetory, self.final_state, self.total_reward = output
 
     def _build_loss_ops(self):
-        with tf.name_scope('loss'):
+        with tf.compat.v1.name_scope('loss'):
             self.avg_total_reward = tf.reduce_mean(self.total_reward, name='avg_total_reward')
             self.loss = self.loss(self.avg_total_reward)
 
     def _build_optimizer_ops(self):
-        with tf.name_scope('optimizer'):
+        with tf.compat.v1.name_scope('optimizer'):
             self.optimizer = self.optimizer(self.learning_rate)
             self.train_op = self.optimizer.minimize(self.loss)
 
     def _build_summary_ops(self):
-        with tf.name_scope('summary'):
-            tf.summary.histogram('total_reward', self.total_reward)
-            tf.summary.scalar('avg_total_reward', self.avg_total_reward)
-            tf.summary.scalar('loss', self.loss)
+        with tf.compat.v1.name_scope('summary'):
+            tf.compat.v1.summary.histogram('total_reward', self.total_reward)
+            tf.compat.v1.summary.scalar('avg_total_reward', self.avg_total_reward)
+            tf.compat.v1.summary.scalar('loss', self.loss)
             for policy_var in self.policy.trainable_variables:
-                tf.summary.histogram(policy_var.name, policy_var)
-            self.summary = tf.summary.merge_all()
+                tf.compat.v1.summary.histogram(policy_var.name, policy_var)
+            self.summary = tf.compat.v1.summary.merge_all()
 
     def run(self, epochs: int,
                   callbacks: Optional[Callbacks] = None,
@@ -111,10 +111,10 @@ class PathwiseOptimizationPlanner(PolicyOptimizationPlanner):
             epochs (int): The number of training epochs.
             callbacks (Optional[Dict[str, List[Callback]]]): Mapping from events to lists of callables.
         '''
-        with tf.Session(graph=self.compiler.graph) as sess:
-            writer = tf.summary.FileWriter(self.logdir, sess.graph)
+        with tf.compat.v1.Session(graph=self.compiler.graph) as sess:
+            writer = tf.compat.v1.summary.FileWriter(self.logdir, sess.graph)
 
-            sess.run(tf.global_variables_initializer())
+            sess.run(tf.compat.v1.global_variables_initializer())
 
             reward = -sys.maxsize
             losses, rewards = [], []

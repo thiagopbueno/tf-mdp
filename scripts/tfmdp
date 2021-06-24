@@ -16,10 +16,13 @@
 # along with tf-mdp. If not, see <http://www.gnu.org/licenses/>.
 
 
-import rddlgym
-
 import argparse
 import time
+
+import rddlgym
+import tensorflow as tf
+
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 
 def parse_args():
@@ -150,7 +153,8 @@ def print_parameters(args):
 
 def load_model(args):
     compiler = rddlgym.make(args.rddl, mode=rddlgym.SCG)
-    compiler.batch_mode_on()
+    compiler.init()
+    compiler.batch_size = args.batch_size
     return compiler
 
 

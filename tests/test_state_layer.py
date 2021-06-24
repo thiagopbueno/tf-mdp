@@ -33,10 +33,11 @@ class TestStateLayer(unittest.TestCase):
 
         # model
         cls.compiler = rddlgym.make('Reservoir-8', mode=rddlgym.SCG)
-        cls.compiler.batch_mode_on()
+        cls.compiler.init()
+        cls.compiler.batch_size = cls.batch_size
 
         # initial state
-        cls.initial_state = cls.compiler.compile_initial_state(cls.batch_size)
+        cls.initial_state = cls.compiler.initial_state()
 
     def setUp(self):
         with self.compiler.graph.as_default():

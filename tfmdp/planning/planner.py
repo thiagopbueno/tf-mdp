@@ -14,7 +14,7 @@
 # along with tf-mdp. If not, see <http://www.gnu.org/licenses/>.
 
 
-import rddl2tf.compiler
+import rddl2tf
 
 from tfmdp.policy.drp import DeepReactivePolicy
 
@@ -35,11 +35,11 @@ class PolicyOptimizationPlanner(metaclass=abc.ABCMeta):
     '''PolicyOptimizationPlanner abstract base class.
 
     Args:
-        compiler (:obj:`rddl2tf.compiler.Compiler`): RDDL2TensorFlow compiler.
+        compiler (:obj:`rddl2tf.compilers.Compiler`): RDDL2TensorFlow compiler.
         config (Dict): The planner configuration parameters.
     '''
 
-    def __init__(self, compiler: rddl2tf.compiler.Compiler, config: Dict) -> None:
+    def __init__(self, compiler: rddl2tf.compilers.Compiler, config: Dict) -> None:
         self.compiler = compiler
         self.config = config
 
@@ -74,12 +74,12 @@ class PolicyOptimizationPlanner(metaclass=abc.ABCMeta):
         return json.dumps(self.config, sort_keys=True, indent=4)
 
     @classmethod
-    def from_json(cls, compiler: rddl2tf.compiler.Compiler,
+    def from_json(cls, compiler: rddl2tf.compilers.Compiler,
                        json_config: str) -> 'PolicyOptimizationPlanner':
         '''Instantiates a policy optimization planner from a `json_config` string.
 
         Args:
-            compiler (:obj:`rddl2tf.compiler.Compiler`): RDDL2TensorFlow compiler.
+            compiler (:obj:`rddl2tf.compilers.Compiler`): RDDL2TensorFlow compiler.
             json_config (str): A planner configuration encoded in JSON format.
 
         Returns:

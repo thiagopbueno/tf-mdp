@@ -33,13 +33,14 @@ class TestActionLayer(unittest.TestCase):
 
         # model
         cls.compiler = rddlgym.make('Reservoir-8', mode=rddlgym.SCG)
-        cls.compiler.batch_mode_on()
+        cls.compiler.init()
+        cls.compiler.batch_size = cls.batch_size
 
         # initial state
-        cls.initial_state = cls.compiler.compile_initial_state(cls.batch_size)
+        cls.initial_state = cls.compiler.initial_state()
 
         # default action
-        cls.default_action = cls.compiler.compile_default_action(cls.batch_size)
+        cls.default_action = cls.compiler.default_action()
 
     def setUp(self):
         with self.compiler.graph.as_default():
@@ -56,8 +57,7 @@ class TestActionLayer(unittest.TestCase):
     def test_logits(self):
         self.assertEqual(len(self.layer.logits), len(self.default_action))
         for logit, size in zip(self.layer.logits, self.compiler.rddl.action_size):
-            self.assertIsInstance(logit, tf.layers.Dense)
-            self.assertEqual(logit.activation, None)
+            self.assertIsInstance(logit, tf.compat.v1.layers.Dense)
             self.assertEqual(logit.units, np.prod(size))
 
     def test_call(self):

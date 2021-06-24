@@ -15,6 +15,7 @@
 
 
 import rddlgym
+import rddl2tf
 
 from tfmdp.policy.feedforward import FeedforwardPolicy
 from tfmdp.model.sequential.reparameterization import ReparameterizationSampling
@@ -37,8 +38,9 @@ class TestMinimaxOptimizationPlanner(unittest.TestCase):
         cls.regularization_rate = 0.1
 
         # rddl
-        cls.compiler = rddlgym.make('Navigation-v2', rddlgym.SCG)
-        cls.compiler.batch_mode_on()
+        rddl = rddlgym.make('Navigation-v2', rddlgym.AST)
+        cls.compiler = rddl2tf.compilers.ReparameterizationCompiler(rddl, batch_size=cls.batch_size)
+        cls.compiler.init()
 
         # policy
         cls.policy = FeedforwardPolicy(cls.compiler, {'layers': [256], 'activation': 'elu', 'input_layer_norm': False})
@@ -61,7 +63,7 @@ class TestMinimaxOptimizationPlanner(unittest.TestCase):
         noise_variables = self.planner.noise_variables
         policy_variables = self.planner.policy_variables
         with self.compiler.graph.as_default():
-            trainable_variables = tf.trainable_variables()
+            trainable_variables = tf.compat.v1.trainable_variables()
 
         self.assertEqual(len(trainable_variables), len(noise_variables) + len(policy_variables))
         self.assertSetEqual(set(trainable_variables), set(noise_variables) | set(policy_variables))

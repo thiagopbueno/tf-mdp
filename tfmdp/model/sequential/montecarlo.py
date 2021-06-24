@@ -31,12 +31,12 @@ class MonteCarloSampling(MarkovRecurrentModel):
     for a given initial state by means of Monte-Carlo approximation.
 
     Args:
-        compiler (:obj:`rddl2tf.compiler.Compiler`): RDDL2TensorFlow compiler.
+        compiler (:obj:`rddl2tf.compilers.Compiler`): RDDL2TensorFlow compiler.
         config (Dict): The recurrent model configuration parameters.
     '''
 
     def __init__(self,
-                 compiler: rddl2tf.compiler.Compiler,
+                 compiler: rddl2tf.compilers.Compiler,
                  config: Optional[Dict] = None) -> None:
         super(MonteCarloSampling, self).__init__(compiler, config)
 

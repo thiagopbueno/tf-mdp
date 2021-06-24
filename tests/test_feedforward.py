@@ -37,13 +37,14 @@ class TestFeedforwardPolicy(unittest.TestCase):
 
         # model
         cls.compiler = rddlgym.make('Reservoir-8', mode=rddlgym.SCG)
-        cls.compiler.batch_mode_on()
+        cls.compiler.init()
+        cls.compiler.batch_size = cls.batch_size
 
         # initial state
-        cls.initial_state = cls.compiler.compile_initial_state(cls.batch_size)
+        cls.initial_state = cls.compiler.initial_state()
 
         # default action
-        cls.default_action = cls.compiler.compile_default_action(cls.batch_size)
+        cls.default_action = cls.compiler.default_action()
 
         # policy
         cls.config = {
@@ -72,7 +73,7 @@ class TestFeedforwardPolicy(unittest.TestCase):
         self.assertIsInstance(self.policy._hidden_layers, tuple)
         self.assertEqual(len(self.policy._hidden_layers), len(self.config['layers']))
         for layer, units in zip(self.policy._hidden_layers, self.config['layers']):
-            self.assertIsInstance(layer, tf.layers.Dense)
+            self.assertIsInstance(layer, tf.compat.v1.layers.Dense)
             self.assertEqual(layer.units, units)
             self.assertEqual(layer.activation, activation_fn[self.config['activation']])
 
@@ -82,7 +83,7 @@ class TestFeedforwardPolicy(unittest.TestCase):
     def test_call(self):
         action1 = self.policy(self.initial_state, self.horizon)
         with self.policy.graph.as_default():
-            policy_vars1 = tf.trainable_variables()
+            policy_vars1 = tf.compat.v1.trainable_variables()
         self.assertEqual(len(policy_vars1), len(self.policy.trainable_variables))
 
         self.assertIsInstance(action1, tuple)
@@ -93,7 +94,7 @@ class TestFeedforwardPolicy(unittest.TestCase):
 
         action2 = self.policy(self.initial_state, self.horizon)
         with self.policy.graph.as_default():
-            policy_vars2 = tf.trainable_variables()
+            policy_vars2 = tf.compat.v1.trainable_variables()
         self.assertEqual(len(policy_vars2), len(self.policy.trainable_variables))
 
         self.assertEqual(len(policy_vars1), len(policy_vars2))

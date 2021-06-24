@@ -14,7 +14,7 @@
 # along with tf-mdp. If not, see <http://www.gnu.org/licenses/>.
 
 
-import rddl2tf.compiler
+import rddl2tf
 
 from tfmdp.policy.drp import DeepReactivePolicy
 
@@ -32,11 +32,11 @@ class MarkovRecurrentModel(metaclass=abc.ABCMeta):
     '''MarkovRecurrentModel abstract base class.
 
     Args:
-        compiler (:obj:`rddl2tf.compiler.Compiler`): RDDL2TensorFlow compiler.
+        compiler (:obj:`rddl2tf.compilers.Compiler`): RDDL2TensorFlow compiler.
         config (Dict): The recurrent model configuration parameters.
     '''
 
-    def __init__(self, compiler: rddl2tf.compiler.Compiler, config: Dict) -> None:
+    def __init__(self, compiler: rddl2tf.compilers.Compiler, config: Dict) -> None:
         self.compiler = compiler
         self.config = config
 
@@ -81,12 +81,12 @@ class MarkovRecurrentModel(metaclass=abc.ABCMeta):
         return json.dumps(self.config, sort_keys=True, indent=4)
 
     @classmethod
-    def from_json(cls, compiler: rddl2tf.compiler.Compiler,
+    def from_json(cls, compiler: rddl2tf.compilers.Compiler,
                        json_config: str) -> 'MarkovRecurrentModel':
         '''Instantiates a model from a `json_config` string.
 
         Args:
-            compiler (:obj:`rddl2tf.compiler.Compiler`): RDDL2TensorFlow compiler.
+            compiler (:obj:`rddl2tf.compilers.Compiler`): RDDL2TensorFlow compiler.
             json_config (str): A model configuration encoded in JSON format.
 
         Returns:

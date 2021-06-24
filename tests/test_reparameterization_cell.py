@@ -14,8 +14,7 @@
 # along with tf-mdp. If not, see <http://www.gnu.org/licenses/>.
 
 import rddlgym
-
-import rddl2tf.reparam
+import rddl2tf
 
 from tfmdp.policy.feedforward import FeedforwardPolicy
 from tfmdp.model.cell.reparameterization_cell import ReparameterizationCell, OutputTuple
@@ -36,14 +35,15 @@ class TestReparameterizationCell(unittest.TestCase):
         cls.batch_size = 16
 
         # rddl
-        cls.compiler = rddlgym.make('Navigation-v2', mode=rddlgym.SCG)
-        cls.compiler.batch_mode_on()
+        rddl = rddlgym.make('Navigation-v2', mode=rddlgym.AST)
+        cls.compiler = rddl2tf.compilers.ReparameterizationCompiler(rddl, batch_size=cls.batch_size)
+        cls.compiler.init()
 
         # initial state
-        cls.initial_state = cls.compiler.compile_initial_state(cls.batch_size)
+        cls.initial_state = cls.compiler.initial_state()
 
         # default action
-        cls.default_action = cls.compiler.compile_default_action(cls.batch_size)
+        cls.default_action = cls.compiler.default_action()
 
         # policy
         cls.policy = FeedforwardPolicy(cls.compiler, {'layers': [64, 64], 'activation': 'relu', 'input_layer_norm': True})
@@ -52,7 +52,7 @@ class TestReparameterizationCell(unittest.TestCase):
         with cls.compiler.graph.as_default():
 
             # reparameterization
-            cls.noise_shapes = rddl2tf.reparam.get_cpfs_reparameterization(cls.compiler.rddl)
+            cls.noise_shapes = cls.compiler.get_cpfs_reparameterization()
             cls.noise_variables = utils.get_noise_variables(cls.noise_shapes, cls.batch_size, cls.horizon)
             cls.noise_inputs, cls.encoding = utils.encode_noise_as_inputs(cls.noise_variables)
 

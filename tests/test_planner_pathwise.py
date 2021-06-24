@@ -36,7 +36,8 @@ class TestPathwiseOptimizationPlanner(unittest.TestCase):
 
         # rddl
         cls.compiler = rddlgym.make('Reservoir-8', rddlgym.SCG)
-        cls.compiler.batch_mode_on()
+        cls.compiler.init()
+        cls.compiler.batch_size = cls.batch_size
 
         # policy
         cls.policy = FeedforwardPolicy(cls.compiler, {'layers': [256], 'activation': 'elu', 'input_layer_norm': True})

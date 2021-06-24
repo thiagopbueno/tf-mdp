@@ -25,7 +25,7 @@ import tensorflow as tf
 from typing import Dict, Optional, Sequence, Tuple, Union
 
 Shape = Sequence[int]
-FluentPair = Tuple[str, rddl2tf.fluent.TensorFluent]
+FluentPair = Tuple[str, rddl2tf.core.fluent.TensorFluent]
 
 NonFluentsTensor = Sequence[tf.Tensor]
 StateTensor = Sequence[tf.Tensor]
@@ -41,7 +41,7 @@ OutputTuple = collections.namedtuple('OutputTuple', 'state action interms reward
 
 
 
-class BasicMarkovCell(tf.nn.rnn_cell.RNNCell):
+class BasicMarkovCell(tf.compat.v1.nn.rnn_cell.RNNCell):
     '''BasicMarkovCell implements a 1-step MDP transition function
     as an RNNCell whose hidden state is the MDP current state and
     output is a tuple with next state, action, intermediate fluents,
@@ -53,7 +53,7 @@ class BasicMarkovCell(tf.nn.rnn_cell.RNNCell):
     '''
 
     def __init__(self,
-                 compiler: rddl2tf.compiler.Compiler,
+                 compiler: rddl2tf.compilers.Compiler,
                  policy: DeepReactivePolicy,
                  config: Optional[Dict] = None):
         self.compiler = compiler

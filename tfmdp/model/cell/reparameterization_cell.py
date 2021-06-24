@@ -27,7 +27,7 @@ import tensorflow as tf
 from typing import Dict, Optional, Sequence, Tuple, Union
 
 Shape = Sequence[int]
-FluentPair = Tuple[str, rddl2tf.fluent.TensorFluent]
+FluentPair = Tuple[str, rddl2tf.core.fluent.TensorFluent]
 
 NonFluentsTensor = Sequence[tf.Tensor]
 StateTensor = Sequence[tf.Tensor]
@@ -52,7 +52,7 @@ class ReparameterizationCell(BasicMarkovCell):
     '''
 
     def __init__(self,
-                 compiler: rddl2tf.compiler.Compiler,
+                 compiler: rddl2tf.compilers.Compiler,
                  policy: DeepReactivePolicy,
                  config: Optional[Dict] = None):
         self.compiler = compiler

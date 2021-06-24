@@ -14,8 +14,7 @@
 # along with tf-mdp. If not, see <http://www.gnu.org/licenses/>.
 
 import rddlgym
-
-from rddl2tf.reparam import get_cpfs_reparameterization
+import rddl2tf
 
 from tfmdp.model import utils
 
@@ -32,10 +31,11 @@ class TestNoiseUtils(unittest.TestCase):
         cls.batch_size = 16
         cls.horizon = 20
 
-        cls.compiler = rddlgym.make('Navigation-v2', mode=rddlgym.SCG)
-        cls.compiler.batch_mode_on()
+        rddl = rddlgym.make('Navigation-v2', mode=rddlgym.AST)
+        cls.compiler = rddl2tf.compilers.ReparameterizationCompiler(rddl, batch_size=cls.batch_size)
+        cls.compiler.init()
 
-        cls.noise_shapes = get_cpfs_reparameterization(cls.compiler.rddl)
+        cls.noise_shapes = cls.compiler.get_cpfs_reparameterization()
 
         with cls.compiler.graph.as_default():
             cls.noise_variables = utils.get_noise_variables(cls.noise_shapes, cls.batch_size, cls.horizon)

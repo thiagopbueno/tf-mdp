@@ -14,7 +14,7 @@
 # along with tf-mdp. If not, see <http://www.gnu.org/licenses/>.
 
 
-from rddl2tf.compiler import Compiler
+from rddl2tf.compilers import Compiler
 from tfmdp.policy.drp import DeepReactivePolicy
 from tfrddlsim.simulation.policy_simulator import PolicySimulator
 
@@ -105,7 +105,7 @@ class Value():
 
                 variable_name_scope = 'valuefn/prediction/{}'.format(name.replace('/', '-'))
 
-                with tf.variable_scope(variable_name_scope, reuse=tf.AUTO_REUSE):
+                with tf.compat.v1.variable_scope(variable_name_scope, reuse=tf.compat.v1.AUTO_REUSE):
                     size = np.prod(size, dtype=np.int32)
 
                     fluent = tf.reshape(fluent, [-1, size], name='fluent_input')
@@ -123,7 +123,7 @@ class Value():
             return prediction
 
     def _build_trajectory_ops(self, horizon, batch_size):
-        self._simulator = PolicySimulator(self._compiler, self._policy, batch_size)
+        self._simulator = PolicySimulator(self._compiler, self._policy)
         trajectories = self._simulator.trajectory(horizon)
         self._states = trajectories[1]
         self._rewards = tf.squeeze(-trajectories[4], name='rewards')
@@ -150,30 +150,30 @@ class Value():
             self._inputs = []
             for name, size in zip(state_fluents, state_size):
                 shape = [None] + list(size)
-                fluent = tf.placeholder(tf.float32, shape=shape, name='fluent_input')
+                fluent = tf.compat.v1.placeholder(tf.float32, shape=shape, name='fluent_input')
                 self._inputs.append(fluent)
             state = tuple(self._inputs)
 
-            self._step = tf.placeholder(tf.int32, shape=(None,), name='step_input')
+            self._step = tf.compat.v1.placeholder(tf.int32, shape=(None,), name='step_input')
 
-            self._training = tf.placeholder(tf.bool, shape=(), name='training_flag')
+            self._training = tf.compat.v1.placeholder(tf.bool, shape=(), name='training_flag')
             self._predictions = self.__call__(state, self._step)
 
     def _build_loss_ops(self):
         with tf.name_scope('loss'):
-            self._targets = tf.placeholder(tf.float32, shape=[None], name='targets')
+            self._targets = tf.compat.v1.placeholder(tf.float32, shape=[None], name='targets')
             self._loss = tf.reduce_mean(tf.square(self._predictions - self._targets), name='mse')
 
     def _build_optimization_ops(self, learning_rate):
-        self._optimizer = tf.train.RMSPropOptimizer(learning_rate)
-        # self._optimizer = tf.train.AdamOptimizer(learning_rate)
+        self._optimizer = tf.compat.v1.train.RMSPropOptimizer(learning_rate)
+        # self._optimizer = tf.compat.v1.train.AdamOptimizer(learning_rate)
         self._grad_and_vars = self._optimizer.compute_gradients(self._loss)
         self._grad_and_vars = [(grad, var) for grad, var in self._grad_and_vars if grad is not None]
         self._train_op = self._optimizer.apply_gradients(self._grad_and_vars)
 
     def _build_initialization_ops(self):
         valuefn_vars = self._trainable_variables()
-        self._init_op = tf.variables_initializer(valuefn_vars)
+        self._init_op = tf.compat.v1.variables_initializer(valuefn_vars)
 
     def _regression_dataset(self, sess):
         features, targets = sess.run([self._dataset_features, self._dataset_targets])
@@ -199,4 +199,4 @@ class Value():
             i += batch_size
 
     def _trainable_variables(self):
-        return tf.trainable_variables(r'valuefn/prediction')
+        return tf.compat.v1.trainable_variables(r'valuefn/prediction')

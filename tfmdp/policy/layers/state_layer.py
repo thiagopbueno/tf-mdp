@@ -19,7 +19,7 @@ import tensorflow as tf
 from typing import Dict, Optional, Sequence
 
 
-class StateLayer(tf.layers.Layer):
+class StateLayer(tf.compat.v1.layers.Layer):
     '''StateLayer should be used as an input layer in a DRP.
 
     It flattens each state fluent and returns a single
@@ -31,7 +31,7 @@ class StateLayer(tf.layers.Layer):
 
     def __init__(self, input_layer_norm: bool = False) -> None:
         super(StateLayer, self).__init__(name='state_layer')
-        self.flatten = tf.layers.Flatten()
+        self.flatten = tf.compat.v1.layers.Flatten()
         self.input_layer_norm = input_layer_norm
 
     @property

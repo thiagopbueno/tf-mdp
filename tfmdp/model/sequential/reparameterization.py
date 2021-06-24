@@ -14,8 +14,7 @@
 # along with tf-mdp. If not, see <http://www.gnu.org/licenses/>.
 
 
-import rddl2tf.compiler
-import rddl2tf.reparam
+import rddl2tf
 
 from tfmdp.policy.drp import DeepReactivePolicy
 
@@ -36,12 +35,12 @@ class ReparameterizationSampling(MarkovRecurrentModel):
     defined over noise vectors given as inputs.
 
     Args:
-        compiler (:obj:`rddl2tf.compiler.Compiler`): RDDL2TensorFlow compiler.
+        compiler (:obj:`rddl2tf.compilers.Compiler`): RDDL2TensorFlow compiler.
         config (Dict): The recurrent model configuration parameters.
     '''
 
     def __init__(self,
-                 compiler: rddl2tf.compiler.Compiler,
+                 compiler: rddl2tf.compilers.Compiler,
                  config: Dict) -> None:
         super(ReparameterizationSampling, self).__init__(compiler, config)
 
@@ -51,7 +50,7 @@ class ReparameterizationSampling(MarkovRecurrentModel):
         Args:
             policy (:obj:`tfmdp.policy.drp.DeepReactivePolicy`): A deep reactive policy.
         '''
-        self.reparameterization_map = rddl2tf.reparam.get_cpfs_reparameterization(self.compiler.rddl)
+        self.reparameterization_map = self.compiler.get_cpfs_reparameterization()
         self.cell = ReparameterizationCell(self.compiler, policy, config={})
 
     def __call__(self,
@@ -72,16 +71,16 @@ class ReparameterizationSampling(MarkovRecurrentModel):
 
         with self.graph.as_default():
 
-            with tf.variable_scope('reparameterization'):
+            with tf.compat.v1.variable_scope('reparameterization'):
                 self.noise_map = utils.get_noise_variables(self.reparameterization_map, batch_size, horizon)
                 self.noise, encoding = utils.encode_noise_as_inputs(self.noise_map)
                 self.cell.config['encoding'] = encoding
 
-            with tf.name_scope('inputs'):
+            with tf.compat.v1.name_scope('inputs'):
                 self.timesteps = self.timesteps(horizon, batch_size)
                 self.inputs = tf.concat([self.timesteps, self.noise], axis=2)
 
-            with tf.name_scope('trajectory'):
+            with tf.compat.v1.name_scope('trajectory'):
                 outputs, final_state = tf.nn.dynamic_rnn(self.cell,
                                                          self.inputs,
                                                          initial_state=initial_state,
@@ -93,7 +92,7 @@ class ReparameterizationSampling(MarkovRecurrentModel):
                 rewards = outputs[3]
                 trajectory = Trajectory(states, actions, interms, rewards)
 
-            with tf.name_scope('total_reward'):
+            with tf.compat.v1.name_scope('total_reward'):
                 total_reward = tf.reduce_sum(tf.squeeze(trajectory.rewards), axis=1)
 
         return (trajectory, final_state, total_reward)
@@ -106,5 +105,5 @@ class ReparameterizationSampling(MarkovRecurrentModel):
     def trainable_variables(self) -> Sequence[tf.Variable]:
         '''Returns the list of trainable variables.'''
         with self.graph.as_default():
-            noise_variables = tf.trainable_variables(r'.*reparameterization')
+            noise_variables = tf.compat.v1.trainable_variables(r'.*reparameterization')
             return noise_variables

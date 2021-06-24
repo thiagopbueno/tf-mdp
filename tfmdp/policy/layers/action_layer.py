@@ -24,7 +24,7 @@ UpperBound = Optional[tf.Tensor]
 ActionBounds = Sequence[Tuple[LowerBound, UpperBound]]
 
 
-class ActionLayer(tf.layers.Layer):
+class ActionLayer(tf.compat.v1.layers.Layer):
     '''ActionLayer should be used as the output layer in a DRP.
 
     It generates multi-head dense output layers with the same shape as
@@ -38,7 +38,9 @@ class ActionLayer(tf.layers.Layer):
     def __init__(self, action_size: int) -> None:
         super(ActionLayer, self).__init__(name='action_layer')
         self.action_size = action_size
-        self.logits = tuple(tf.layers.Dense(np.prod(sz)) for sz in action_size)
+        self.logits = tuple(
+            tf.compat.v1.layers.Dense(np.prod(sz)) for sz in action_size
+        )
 
     @property
     def trainable_variables(self) -> None:
