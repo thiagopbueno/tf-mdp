@@ -234,7 +234,7 @@ along with tf-mdp. If not, see http://www.gnu.org/licenses/.
 [pypi-version]: https://badge.fury.io/py/tf-mdp
 
 [travis.svg]: https://img.shields.io/travis/thiagopbueno/tf-mdp/master.svg?logo=travis
-[travis-project]: https://travis-ci.org/thiagopbueno/tf-mdp
+[travis-project]: https://travis-ci.com/thiagopbueno/tf-mdp
 
 [rtd-badge.svg]: https://readthedocs.org/projects/tf-mdp/badge/?version=latest
 [rtd-badge]: https://tf-mdp.readthedocs.io/en/latest/?badge=latest
