@@ -23,13 +23,12 @@ setup(
     url='https://github.com/thiagopbueno/tf-mdp',
     packages=find_packages(),
     scripts=['scripts/tfmdp'],
+    python_requires=">=3.6",
     install_requires=[
-        'rddl2tf>=0.5.4',
-        'rddlgym>=0.5.8',
-        'tfrddlsim>=0.7.0',
-        'tensorflow',
-        'tensorflow-tensorboard',
-        'typing'
+        'tensorflow<2.0.0',
+        'typing',
+        'rddlgym',
+        'tfrddlsim',
     ],
     include_package_data=True,
     zip_safe=False,
