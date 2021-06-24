@@ -1,4 +1,4 @@
-# tf-mdp [![Build Status][travis.svg]][travis] [![Documentation Status][readthedocs-badge]][readthedocs] [![License: GPL v3][license.svg]][license]
+# tf-mdp[![Py Versions][py-versions.svg]][pypi-project] [![PyPI version][pypi-version.svg]][pypi-version] [![Build Status][travis.svg]][travis-project] [![Documentation Status][rtd-badge.svg]][rtd-badge] [![License: GPL v3][license.svg]][license]
 
 Probabilistic planning in continuous state-action MDPs using TensorFlow.
 
@@ -10,7 +10,7 @@ Probabilistic planning in continuous state-action MDPs using TensorFlow.
 
 # Quickstart
 
-**tf-mdp** is a Python3.5+ package available in PyPI.
+**tf-mdp** is a Python3.6+ package available in PyPI.
 
 ```text
 $ pip3 install tf-mdp
@@ -83,7 +83,7 @@ optional arguments:
 ```text
 $ tfmdp Reservoir-20 -l 2048 -iln -a elu -b 256 -hr 40 -e 200 -lr 0.001 -lfn mse -v
 
-Running tf-mdp v0.5.2 ...
+Running tf-mdp v0.5.4 ...
 
 >> RDDL:   Reservoir-20
 >> logdir: /tmp/tfmdp
@@ -104,21 +104,24 @@ optimizer     = RMSProp
 loss function = mse
 
 >> Loading model ...
-Done in 0.059091 sec.
+Done in 0.018952 sec.
 
 >> Optimizing...
-2019-04-15 16:17:16.383099: I tensorflow/core/platform/cpu_feature_guard.cc:137] Your CPU supports instructions that this TensorFlow binary was not compiled to use: SSE4.2
-Epoch   199: loss = 1036054272.0000000
-Done in 184.721894 sec.
+2021-06-23 22:56:18.873731: I tensorflow/core/platform/cpu_feature_guard.cc:142] Your CPU supports instructions that this TensorFlow binary was not compiled to use: AVX2 FMA
+2021-06-23 22:56:18.895765: I tensorflow/core/platform/profile_utils/cpu_utils.cc:94] CPU Frequency: 2199995000 Hz
+2021-06-23 22:56:18.896462: I tensorflow/compiler/xla/service/service.cc:168] XLA service 0x46628b0 initialized for platform Host (this does not guarantee that XLA will be used). Devices:
+2021-06-23 22:56:18.896514: I tensorflow/compiler/xla/service/service.cc:176]   StreamExecutor device (0): Host, Default Version
+Epoch   199: loss = 1201677952.000000
+Done in 28.525183 sec.
 
 >> Performance:
-total reward = -3637.6018, reward per timestep = -90.9400
+total reward = -3653.9695, reward per timestep = -91.3492
 ```
 
 ```text
 $ tfmdp HVAC-3 -l 256 128 64 32 -iln -a elu -b 256 -hr 40 -e 200 -lr 0.0001 -lfn mse -v
 
-Running tf-mdp v0.5.2 ...
+Running tf-mdp v0.5.4 ...
 
 >> RDDL:   HVAC-3
 >> logdir: /tmp/tfmdp
@@ -139,21 +142,24 @@ optimizer     = RMSProp
 loss function = mse
 
 >> Loading model ...
-Done in 0.042337 sec.
+Done in 0.017646 sec.
 
 >> Optimizing...
-2019-04-15 16:20:25.744165: I tensorflow/core/platform/cpu_feature_guard.cc:137] Your CPU supports instructions that this TensorFlow binary was not compiled to use: SSE4.2
-Epoch   199: loss = 131730186240.0000000
-Done in 60.739938 sec.
+2021-06-23 22:54:05.766434: I tensorflow/core/platform/cpu_feature_guard.cc:142] Your CPU supports instructions that this TensorFlow binary was not compiled to use: AVX2 FMA
+2021-06-23 22:54:05.787832: I tensorflow/core/platform/profile_utils/cpu_utils.cc:94] CPU Frequency: 2199995000 Hz
+2021-06-23 22:54:05.788607: I tensorflow/compiler/xla/service/service.cc:168] XLA service 0x49a4d00 initialized for platform Host (this does not guarantee that XLA will be used). Devices:
+2021-06-23 22:54:05.788690: I tensorflow/compiler/xla/service/service.cc:176]   StreamExecutor device (0): Host, Default Version
+Epoch   199: loss = 103798661120.0000000
+Done in 15.748765 sec.
 
 >> Performance:
-total reward = -305691.7500, reward per timestep = -7642.2937
+total reward = -315724.4688, reward per timestep = -7893.1117
 ```
 
 ```text
 $ tfmdp Navigation-v2 -l 256 128 64 32 -a elu -b 128 -hr 20 -e 200 -lr 0.001 -lfn mse -v
 
-Running tf-mdp v0.5.2 ...
+Running tf-mdp v0.5.4 ...
 
 >> RDDL:   Navigation-v2
 >> logdir: /tmp/tfmdp
@@ -174,15 +180,18 @@ optimizer     = RMSProp
 loss function = mse
 
 >> Loading model ...
-Done in 0.038808 sec.
+Done in 0.012209 sec.
 
 >> Optimizing...
-2019-04-15 16:21:30.444619: I tensorflow/core/platform/cpu_feature_guard.cc:137] Your CPU supports instructions that this TensorFlow binary was not compiled to use: SSE4.2
-Epoch   199: loss = 6183.8642586
-Done in 19.277676 sec.
+2021-06-23 22:50:59.732002: I tensorflow/core/platform/cpu_feature_guard.cc:142] Your CPU supports instructions that this TensorFlow binary was not compiled to use: AVX2 FMA
+2021-06-23 22:50:59.751959: I tensorflow/core/platform/profile_utils/cpu_utils.cc:94] CPU Frequency: 2199995000 Hz
+2021-06-23 22:50:59.752494: I tensorflow/compiler/xla/service/service.cc:168] XLA service 0x5bc6a20 initialized for platform Host (this does not guarantee that XLA will be used). Devices:
+2021-06-23 22:50:59.752514: I tensorflow/compiler/xla/service/service.cc:176]   StreamExecutor device (0): Host, Default Version
+Epoch   199: loss = 6452.3613285
+Done in 6.466699 sec.
 
 >> Performance:
-total reward = -78.4958, reward per timestep = -3.9248
+total reward = -78.3427, reward per timestep = -3.9171
 ```
 
 # Documentation
@@ -196,7 +205,7 @@ If you are having issues with tf-mdp, please let me know at: [thiago.pbueno@gmai
 
 # License
 
-Copyright (c) 2018-2019 Thiago Pereira Bueno All Rights Reserved.
+Copyright (c) 2018-2021 Thiago Pereira Bueno All Rights Reserved.
 
 tf-mdp is free software: you can redistribute it and/or modify it
 under the terms of the GNU Lesser General Public License as published by
@@ -211,14 +220,24 @@ General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License
 along with tf-mdp. If not, see http://www.gnu.org/licenses/.
 
-[license.svg]: https://img.shields.io/badge/License-GPL%20v3-blue.svg
-[license]: https://github.com/thiagopbueno/tf-mdp/blob/master/LICENSE
+
 [pyrddl]: https://github.com/thiagopbueno/pyrddl
 [rddl2tf]: https://github.com/thiagopbueno/rddl2tf
 [rddl]: http://users.cecs.anu.edu.au/~ssanner/IPPC_2011/RDDL.pdf
 [rddlgym]: https://github.com/thiagopbueno/rddlgym
-[readthedocs-badge]: https://readthedocs.org/projects/tf-mdp/badge/?version=latest
-[readthedocs]: https://tf-mdp.readthedocs.io/en/latest
 [tf-rddlsim]: https://github.com/thiagopbueno/tf-rddlsim
-[travis.svg]: https://travis-ci.org/thiagopbueno/tf-mdp.svg?branch=master
-[travis]: https://travis-ci.org/thiagopbueno/tf-mdp
+
+[py-versions.svg]: https://img.shields.io/pypi/pyversions/tf-mdp.svg?logo=python&logoColor=white
+[pypi-project]: https://pypi.org/project/tf-mdp
+
+[pypi-version.svg]: https://badge.fury.io/py/tf-mdp.svg
+[pypi-version]: https://badge.fury.io/py/tf-mdp
+
+[travis.svg]: https://img.shields.io/travis/thiagopbueno/tf-mdp/master.svg?logo=travis
+[travis-project]: https://travis-ci.org/thiagopbueno/tf-mdp
+
+[rtd-badge.svg]: https://readthedocs.org/projects/tf-mdp/badge/?version=latest
+[rtd-badge]: https://tf-mdp.readthedocs.io/en/latest/?badge=latest
+
+[license.svg]: https://img.shields.io/badge/License-GPL%20v3-blue.svg
+[license]: https://github.com/thiagopbueno/tf-mdp/blob/master/LICENSE
