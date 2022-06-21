@@ -1,5 +1,5 @@
 matplotlib==2.0.2
-numpy==1.14.2
+numpy==1.22.0
 ply==3.11
 pyrddl>=0.1.8
 rddlgym>=0.5.8
